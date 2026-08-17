@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, PostReceiveAction } from 'n8n-workflow';
 import { renderFromJsonDescription } from './renderFromJson';
 import { renderFromTemplateDescription } from './renderFromTemplate';
 import { renderGetDescription } from './get';
@@ -6,6 +6,15 @@ import { renderGetDescription } from './get';
 const showOnlyForRender = {
 	resource: ['render'],
 };
+
+// Every Shotstack response is wrapped as { success, message, response }.
+// Unwrapping it lets workflows read {{$json.id}} rather than {{$json.response.id}}.
+const unwrapResponse: PostReceiveAction[] = [
+	{
+		type: 'rootProperty',
+		properties: { property: 'response' },
+	},
+];
 
 export const renderDescription: INodeProperties[] = [
 	{
@@ -25,6 +34,7 @@ export const renderDescription: INodeProperties[] = [
 						method: 'POST',
 						url: '/render',
 					},
+					output: { postReceive: unwrapResponse },
 				},
 			},
 			{
@@ -37,6 +47,7 @@ export const renderDescription: INodeProperties[] = [
 						method: 'POST',
 						url: '/templates/render',
 					},
+					output: { postReceive: unwrapResponse },
 				},
 			},
 			{
@@ -48,6 +59,7 @@ export const renderDescription: INodeProperties[] = [
 					request: {
 						method: 'GET',
 					},
+					output: { postReceive: unwrapResponse },
 				},
 			},
 		],

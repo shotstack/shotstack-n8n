@@ -27,8 +27,7 @@ export const renderGetDescription: INodeProperties[] = [
 		type: 'boolean',
 		default: true,
 		displayOptions: { show: showOnly },
-		description:
-			'Whether to return only the fields most workflows need: the ID, the status, the finished video URL and any error. Turn this off to get the full response',
+		description: 'Whether to return only the fields most workflows need: the ID, the status, the finished video URL and any error. Turn this off to get the full response.',
 		routing: {
 			output: {
 				postReceive: [

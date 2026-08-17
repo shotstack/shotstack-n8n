@@ -30,8 +30,7 @@ export const renderFromTemplateDescription: INodeProperties[] = [
 		typeOptions: { multipleValues: true },
 		default: {},
 		displayOptions: { show: showOnly },
-		description:
-			'Replaces placeholders in the template. A template placeholder written as {{ HEADLINE }} is matched by the find value HEADLINE',
+		description: 'Replaces placeholders in the template. A template placeholder written as {{ HEADLINE }} is matched by the find value HEADLINE.',
 		options: [
 			{
 				displayName: 'Merge Field',
@@ -69,8 +68,7 @@ export const renderFromTemplateDescription: INodeProperties[] = [
 		default: '',
 		placeholder: 'https://your-n8n/webhook/shotstack-done',
 		displayOptions: { show: showOnly },
-		description:
-			'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling',
+		description: 'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling.',
 		routing: {
 			send: {
 				type: 'body',

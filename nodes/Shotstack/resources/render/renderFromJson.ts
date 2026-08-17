@@ -31,8 +31,7 @@ export const renderFromJsonDescription: INodeProperties[] = [
 		default: SAMPLE_EDIT,
 		typeOptions: { rows: 12 },
 		displayOptions: { show: showOnly },
-		description:
-			'The full Shotstack edit: a timeline of tracks and clips, plus output settings. Paste one from the docs or Studio, or build it with an expression',
+		description: 'The full Shotstack edit: a timeline of tracks and clips, plus output settings. Paste one from the docs or Studio, or build it with an expression.',
 		routing: {
 			request: {
 				body: '={{ typeof $value === "string" ? JSON.parse($value) : $value }}',
@@ -46,8 +45,7 @@ export const renderFromJsonDescription: INodeProperties[] = [
 		default: '',
 		placeholder: 'https://your-n8n/webhook/shotstack-done',
 		displayOptions: { show: showOnly },
-		description:
-			'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling',
+		description: 'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling.',
 		routing: {
 			send: {
 				type: 'body',

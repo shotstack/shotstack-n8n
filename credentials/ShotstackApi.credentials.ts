@@ -11,7 +11,10 @@ export class ShotstackApi implements ICredentialType {
 
 	displayName = 'Shotstack API';
 
-	icon: Icon = 'file:../icons/shotstack.svg';
+	icon: Icon = {
+		light: 'file:../icons/shotstack.svg',
+		dark: 'file:../icons/shotstack.dark.svg',
+	};
 
 	documentationUrl = 'https://shotstack.io/docs/guide/getting-started/core-concepts/';
 

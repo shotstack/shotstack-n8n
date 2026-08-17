@@ -5,7 +5,10 @@ export class Shotstack implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Shotstack',
 		name: 'shotstack',
-		icon: 'file:../../icons/shotstack.svg',
+		icon: {
+			light: 'file:../../icons/shotstack.svg',
+			dark: 'file:../../icons/shotstack.dark.svg',
+		},
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
@@ -32,10 +35,6 @@ export class Shotstack implements INodeType {
 				// report a bare "n8n". Do not change this to "n8n".
 				'User-Agent': 'shotstack-n8n-node/0.1.0',
 			},
-			// Every Shotstack response is wrapped as { success, message, response }.
-			// Unwrapping it here lets workflows read {{$json.id}} instead of
-			// {{$json.response.id}}.
-			returnFullResponse: false,
 		},
 		properties: [
 			{
