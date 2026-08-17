@@ -1,0 +1,60 @@
+{
+	"name": "n8n-nodes-shotstack",
+	"version": "0.1.0",
+	"description": "Render video and images from JSON with the Shotstack API",
+	"license": "MIT",
+	"homepage": "https://shotstack.io",
+	"keywords": [
+		"n8n-community-node-package",
+		"shotstack",
+		"video",
+		"video-editing",
+		"video-api",
+		"video-automation",
+		"json-to-video",
+		"n8n"
+	],
+	"author": {
+		"name": "Shotstack",
+		"email": "support@shotstack.io"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/shotstack/n8n-nodes-shotstack.git"
+	},
+	"bugs": {
+		"url": "https://github.com/shotstack/n8n-nodes-shotstack/issues"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/ShotstackApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/Shotstack/Shotstack.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "*",
+		"eslint": "9.32.0",
+		"prettier": "3.6.2",
+		"release-it": "^19.0.4",
+		"typescript": "5.9.2"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
+}
