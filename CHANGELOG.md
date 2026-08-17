@@ -6,7 +6,12 @@ First version.
 
 ### Added
 
-- **Shotstack** node with a Render resource and four operations:
+- **Shotstack** node with a Render resource and five operations:
+  - **Render From Example** — the default. Eleven ready-made edits in a
+    dropdown, each rendering as-is. Ten are Shotstack's published templates;
+    the vertical one is ours, because the library has no vertical example and
+    vertical is the most common shape in real automation traffic. A new user
+    can render a real video without writing any JSON.
   - **Render From Edit** — `POST /render` with a full Shotstack edit.
   - **Render From Template** — `POST /templates/render` with a template ID and
     merge fields.

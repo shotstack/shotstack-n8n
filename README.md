@@ -44,6 +44,38 @@ anything. Switch to Production and paste the matching key when you go live.
 
 ## Operations
 
+### Render → Render From Example
+
+Renders a ready-made edit. **Start here** — it is the fastest way to a real
+video, and it needs nothing but a key.
+
+| Field | Notes |
+| --- | --- |
+| **Example** | Pick one of eleven edits. |
+| **Callback URL** | Optional, see [Waiting for a render](#waiting-for-a-render). |
+
+| Example | Shape | Length |
+| --- | --- | --- |
+| Vertical Social Short (9:16) | vertical | 6s |
+| Starter: Title, Image and Video | landscape | short |
+| Photo Slideshow (Ken Burns) | landscape | 29s |
+| Car Sale Slideshow | 1920×1080 | 36s |
+| Car Walkaround | landscape | short |
+| Real Estate Listing (with Merge Fields) | landscape | 36s |
+| Real Estate Walkthrough (1080p) | 1920×1080 | — |
+| Hotel or Travel Slideshow | 1920×1080 | — |
+| Kinetic Text | 1024×576 | 17s |
+| News Summary Video | landscape | — |
+| Health and Wellbeing Advert | landscape | — |
+
+Ten come from Shotstack's [template library](https://shotstack.io/templates/).
+The vertical one is ours — the library has no vertical example, and vertical is
+the most common shape in real automation traffic.
+
+**To change one:** run it, then switch to **Render From Edit** and paste the
+JSON from that template's page in the library. The examples render as-is; they
+are a starting point, not a form.
+
 ### Render → Render From Edit
 
 Renders a video or image from a full Shotstack edit.

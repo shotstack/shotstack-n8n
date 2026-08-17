@@ -1,4 +1,5 @@
 import type { INodeProperties, PostReceiveAction } from 'n8n-workflow';
+import { renderFromExampleDescription } from './renderFromExample';
 import { renderFromJsonDescription } from './renderFromJson';
 import { renderFromTemplateDescription } from './renderFromTemplate';
 import { renderGetDescription } from './get';
@@ -33,6 +34,19 @@ export const renderDescription: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: showOnlyForRender },
 		options: [
+			{
+				name: 'Render From Example',
+				value: 'renderFromExample',
+				description: 'Render a ready-made edit. The quickest way to a real video.',
+				action: 'Render a video from an example',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '/render',
+					},
+					output: { postReceive: unwrapResponse },
+				},
+			},
 			{
 				name: 'Render From Edit',
 				value: 'renderFromJson',
@@ -84,8 +98,9 @@ export const renderDescription: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'renderFromJson',
+		default: 'renderFromExample',
 	},
+	...renderFromExampleDescription,
 	...renderFromJsonDescription,
 	...renderFromTemplateDescription,
 	...renderGetDescription,
