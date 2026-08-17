@@ -2,17 +2,26 @@ import type { INodeProperties, PostReceiveAction } from 'n8n-workflow';
 import { renderFromJsonDescription } from './renderFromJson';
 import { renderFromTemplateDescription } from './renderFromTemplate';
 import { renderGetDescription } from './get';
+import { renderGetAssetsDescription } from './getAssets';
 
 const showOnlyForRender = {
 	resource: ['render'],
 };
 
-// Every Shotstack response is wrapped as { success, message, response }.
+// Every Edit API response is wrapped as { success, message, response }.
 // Unwrapping it lets workflows read {{$json.id}} rather than {{$json.response.id}}.
 const unwrapResponse: PostReceiveAction[] = [
 	{
 		type: 'rootProperty',
 		properties: { property: 'response' },
+	},
+];
+
+// The Serve API uses a different envelope: { data: [ { type, attributes } ] }.
+const unwrapServeData: PostReceiveAction[] = [
+	{
+		type: 'rootProperty',
+		properties: { property: 'data' },
 	},
 ];
 
@@ -53,7 +62,7 @@ export const renderDescription: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Check the status of a render and get the finished video URL',
+				description: 'Check the status of a render. Returns a temporary URL that expires.',
 				action: 'Get a render',
 				routing: {
 					request: {
@@ -62,10 +71,23 @@ export const renderDescription: INodeProperties[] = [
 					output: { postReceive: unwrapResponse },
 				},
 			},
+			{
+				name: 'Get Hosted Asset',
+				value: 'getAssets',
+				description: 'Get the permanent CDN URL for a finished render',
+				action: 'Get the hosted asset for a render',
+				routing: {
+					request: {
+						method: 'GET',
+					},
+					output: { postReceive: unwrapServeData },
+				},
+			},
 		],
 		default: 'renderFromJson',
 	},
 	...renderFromJsonDescription,
 	...renderFromTemplateDescription,
 	...renderGetDescription,
+	...renderGetAssetsDescription,
 ];

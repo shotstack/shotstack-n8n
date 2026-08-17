@@ -74,15 +74,34 @@ Returns the render `id`.
 
 ### Render → Get
 
-Checks a render and returns the finished video URL once it is done.
+Checks a render and returns its status.
 
 | Field | Notes |
 | --- | --- |
 | **Render ID** | The id returned by either render operation. |
-| **Simplify Output** | On by default. Returns `id`, `status`, `url` and `error`. Turn it off for the full response. |
+| **Include Submitted Edit** | Off by default. Keeps polling responses small. |
+| **Simplify** | On by default. Returns `id`, `status`, `url`, `poster`, `thumbnail`, `duration`, `renderTime` and `error`. Turn it off for the full response. |
 
-`status` moves through `queued` → `fetching` → `rendering` → `saving` → `done`.
-A failed render reports `failed` with a reason in `error`.
+`status` moves through `queued` → `preprocessing` → `fetching` → `rendering` →
+`saving` → `done`. A failed render reports `failed`, with a reason in `error`.
+**Branch on `failed` as well as `done`** — see the wait loop below.
+
+> **The `url` from this operation expires after 24 hours.** It is a direct
+> storage link. For a permanent URL, use **Get Hosted Asset**.
+
+### Render → Get Hosted Asset
+
+Returns the permanent CDN URL for a finished render.
+
+| Field | Notes |
+| --- | --- |
+| **Render ID** | The id returned by either render operation. |
+| **Simplify** | On by default. Returns `id`, `renderId`, `url`, `filename`, `filesize` and `status`. |
+
+Use this for any URL you intend to store, email, publish or hand to another
+system. The URL looks like `https://cdn.shotstack.io/...` and does not expire.
+
+Call it once the render reports `done`.
 
 ### Output shape
 
@@ -108,14 +127,18 @@ Use this when the callback cannot reach you — for example a self-hosted n8n
 behind a home router.
 
 ```
-Shotstack (Render)  →  Wait (20s)  →  Shotstack (Get)  →  If  status = done
-                            ↑                               │
-                            └───────── false ───────────────┘
-                                                            └── true → next step
+Shotstack (Render) → Wait (20s) → Shotstack (Get) → Switch on {{$json.status}}
+                          ↑                            ├─ done   → Get Hosted Asset → next step
+                          │                            ├─ failed → stop, report {{$json.error}}
+                          └────────── anything else ───┘
 ```
 
-Cap the loop so a failed render cannot spin forever. Ten passes at 20 seconds
-covers most renders.
+**Branch on `failed`, not just `done`.** A Switch node that only routes `done`
+back into the Wait node will loop forever on a failed render, burning API calls
+against the rate limit and holding an n8n execution open.
+
+Also cap the number of passes. Renders usually finish in seconds but can take
+minutes, so allow roughly 30 passes at 20 seconds before giving up.
 
 ## Use with AI agents
 

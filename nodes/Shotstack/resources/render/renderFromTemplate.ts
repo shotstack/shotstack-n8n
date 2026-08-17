@@ -40,6 +40,7 @@ export const renderFromTemplateDescription: INodeProperties[] = [
 						displayName: 'Find',
 						name: 'find',
 						type: 'string',
+						required: true,
 						default: '',
 						description: 'The placeholder name, without the braces',
 					},
@@ -47,8 +48,9 @@ export const renderFromTemplateDescription: INodeProperties[] = [
 						displayName: 'Replace',
 						name: 'replace',
 						type: 'string',
+						required: true,
 						default: '',
-						description: 'The value to put in its place',
+						description: 'The value to put in its place. Shotstack accepts any JSON type here, so for a number or a boolean use an expression such as {{ 4 }} rather than typing 4 as text — a template placeholder for a clip length or volume needs a real number.',
 					},
 				],
 			},
@@ -57,7 +59,12 @@ export const renderFromTemplateDescription: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'merge',
-				value: '={{ $value.mergeFields ?? [] }}',
+				// Accept both shapes: the fixedCollection's own { mergeFields: [...] },
+				// and a bare array supplied by expression from an earlier node or an
+				// AI agent. Sending undefined rather than [] keeps the key out of the
+				// body when there is nothing to merge.
+				value:
+					'={{ Array.isArray($value) ? $value : ($value?.mergeFields?.length ? $value.mergeFields : undefined) }}',
 			},
 		},
 	},
@@ -73,6 +80,9 @@ export const renderFromTemplateDescription: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'callback',
+				// Send undefined rather than '' when the field is blank. n8n has no
+				// empty-value guard, and lodash merge skips undefined but not ''.
+				value: '={{ $value || undefined }}',
 			},
 		},
 	},

@@ -6,12 +6,15 @@ First version.
 
 ### Added
 
-- **Shotstack** node with a Render resource and three operations:
+- **Shotstack** node with a Render resource and four operations:
   - **Render From Edit** — `POST /render` with a full Shotstack edit.
   - **Render From Template** — `POST /templates/render` with a template ID and
     merge fields.
-  - **Get** — `GET /render/{id}`, with a Simplify Output toggle returning
-    `id`, `status`, `url` and `error`.
+  - **Get** — `GET /render/{id}`, with an Include Submitted Edit toggle and a
+    Simplify toggle.
+  - **Get Hosted Asset** — `GET /assets/render/{id}` on the Serve API, for the
+    permanent CDN URL. The URL returned by **Get** is a direct storage link that
+    expires after 24 hours, so anything stored or published should use this.
 - **Shotstack API** credential with a Sandbox/Production switch, defaulting to
   Sandbox so the node can be tried without spending credits. Includes a
   credential test.

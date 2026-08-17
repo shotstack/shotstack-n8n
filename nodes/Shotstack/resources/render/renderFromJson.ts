@@ -31,10 +31,14 @@ export const renderFromJsonDescription: INodeProperties[] = [
 		default: SAMPLE_EDIT,
 		typeOptions: { rows: 12 },
 		displayOptions: { show: showOnly },
-		description: 'The full Shotstack edit: a timeline of tracks and clips, plus output settings. Paste one from the docs or Studio, or build it with an expression.',
+		description:
+			'The full Shotstack edit: a timeline of tracks and clips, plus output settings. Paste one from the docs or Studio. Keep this field in fixed mode — in expression mode n8n evaluates Shotstack merge placeholders such as {{ HEADLINE }} and replaces them with nothing.',
 		routing: {
 			request: {
-				body: '={{ typeof $value === "string" ? JSON.parse($value) : $value }}',
+				// parseJson reports a bad edit as a real n8n error. A bare JSON.parse
+				// throws a SyntaxError that the expression engine swallows, which sends
+				// the request with no edit at all and an opaque API error back.
+				body: '={{ typeof $value === "string" ? $value.parseJson() : $value }}',
 			},
 		},
 	},
@@ -45,11 +49,15 @@ export const renderFromJsonDescription: INodeProperties[] = [
 		default: '',
 		placeholder: 'https://your-n8n/webhook/shotstack-done',
 		displayOptions: { show: showOnly },
-		description: 'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling.',
+		description: 'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling. Leave blank if your edit already sets its own callback.',
 		routing: {
 			send: {
 				type: 'body',
 				property: 'callback',
+				// Send undefined rather than '' when blank. Otherwise this merges an
+				// empty string over a callback the user set inside their own edit,
+				// silently breaking their webhook.
+				value: '={{ $value || undefined }}',
 			},
 		},
 	},

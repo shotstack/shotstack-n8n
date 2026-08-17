@@ -8,7 +8,10 @@ on:
 
 # Cancel in-progress runs for the same branch/PR to avoid wasting CI minutes.
 concurrency:
-  group: ci-$
+  # The n8n scaffold rendered this as a bare "$" (the same templating bug it has
+  # in publish.yml). Left unfixed, every branch and PR shares one concurrency
+  # group, so any push cancels unrelated in-flight runs.
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

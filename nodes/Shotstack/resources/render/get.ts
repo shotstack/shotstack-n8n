@@ -22,12 +22,29 @@ export const renderGetDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
-		name: 'simplify',
+		displayName: 'Include Submitted Edit',
+		name: 'includeData',
+		type: 'boolean',
+		default: false,
+		displayOptions: { show: showOnly },
+		description:
+			'Whether to return the edit that was submitted alongside the status. Off keeps polling responses small. Shotstack is changing this default, so the node always sends it explicitly',
+		routing: {
+			request: {
+				qs: {
+					data: '={{$value}}',
+				},
+			},
+		},
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
 		type: 'boolean',
 		default: true,
 		displayOptions: { show: showOnly },
-		description: 'Whether to return only the fields most workflows need: the ID, the status, the finished video URL and any error. Turn this off to get the full response.',
+		description:
+			'Whether to return a simplified version of the response instead of the raw data',
 		routing: {
 			output: {
 				postReceive: [
@@ -38,6 +55,10 @@ export const renderGetDescription: INodeProperties[] = [
 							id: '={{$responseItem.id}}',
 							status: '={{$responseItem.status}}',
 							url: '={{$responseItem.url}}',
+							poster: '={{$responseItem.poster}}',
+							thumbnail: '={{$responseItem.thumbnail}}',
+							duration: '={{$responseItem.duration}}',
+							renderTime: '={{$responseItem.renderTime}}',
 							error: '={{$responseItem.error}}',
 						},
 					},
