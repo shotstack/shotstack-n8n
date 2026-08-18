@@ -91,8 +91,11 @@ const attachVideoFile: PostReceiveAction = async function (
 		contentType || undefined,
 	);
 
-	// The body is the video itself, so there is nothing useful to keep in json.
-	return items.map(() => ({ json: {}, binary: { data: binary } }));
+	// The body is the video itself, so it makes a poor json payload. Carry the
+	// incoming fields through instead. A later step can then name the file with
+	// {{ $json.id }} rather than reaching back to an earlier node by name.
+	const incoming = (this.getInputData()?.json ?? {}) as IDataObject;
+	return items.map(() => ({ json: incoming, binary: { data: binary } }));
 };
 
 export const renderDownloadDescription: INodeProperties[] = [
