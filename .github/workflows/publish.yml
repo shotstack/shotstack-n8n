@@ -93,7 +93,12 @@ jobs:
         # Option B (token): set NPM_TOKEN in repo secrets — it is written to
         #   .npmrc here before publishing.
         run: |
-          [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          # An `if` block, not `[ -n ... ] && ...`. GitHub runs this with bash -e,
+          # so the && form exits 1 when NPM_TOKEN is unset and kills the step —
+          # which is precisely the OIDC path the notes above recommend.
+          if [ -n "$NPM_TOKEN" ]; then
+            npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          fi
           npm run release
         env:
           # NOTE: the n8n scaffold (@n8n/node-cli 0.43.4) shipped this line as a
