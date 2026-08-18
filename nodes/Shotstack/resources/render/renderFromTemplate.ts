@@ -7,18 +7,47 @@ const showOnly = {
 
 export const renderFromTemplateDescription: INodeProperties[] = [
 	{
-		displayName: 'Template ID',
+		displayName: 'Template',
 		name: 'templateId',
-		type: 'string',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		default: '',
-		placeholder: '980b66a0-6eb0-4454-81e2-01adbb0fac1f',
 		displayOptions: { show: showOnly },
-		description: 'The ID of a template saved in your Shotstack account',
+		description:
+			'A template saved in your Shotstack account. Pick one from the list, or paste an ID if you know it. Templates are made in Shotstack Studio — a new account has none yet',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a template…',
+				typeOptions: {
+					searchListMethod: 'getTemplates',
+					searchable: true,
+					searchFilterRequired: false,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '980b66a0-6eb0-4454-81e2-01adbb0fac1f',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+							errorMessage: 'Not a valid Shotstack template ID',
+						},
+					},
+				],
+			},
+		],
 		routing: {
 			send: {
 				type: 'body',
 				property: 'id',
+				value: '={{ $value }}',
 			},
 		},
 	},

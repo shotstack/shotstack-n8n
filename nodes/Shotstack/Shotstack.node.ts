@@ -1,5 +1,6 @@
 import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 import { renderDescription } from './resources/render';
+import { getTemplates } from './listSearch/getTemplates';
 
 export class Shotstack implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,5 +53,11 @@ export class Shotstack implements INodeType {
 			},
 			...renderDescription,
 		],
+	};
+
+	methods = {
+		listSearch: {
+			getTemplates,
+		},
 	};
 }
