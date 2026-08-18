@@ -216,7 +216,7 @@ identical — this node just removes the wiring.
 
 ## Compatibility
 
-Tested against n8n 1.x. Requires Node.js 20 or later.
+Tested against n8n 2.35. Requires Node.js 20.19 or later; n8n 2.x itself asks for 22.22 or later.
 
 ## Resources
 
