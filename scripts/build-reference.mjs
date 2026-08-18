@@ -2,17 +2,14 @@
 // OpenAPI file, so the reference the node hands an AI can never drift from the
 // real API.
 //
-//   node scripts/build-reference.mjs <path-to-shotstack-openapi.json>
+//   node scripts/build-reference.mjs [path-to-openapi.json]
 //
-// Shotstack does not publish the file at a stable public address, so pass a
-// local copy. The house rules beside this script are ours, not the API's.
+// Shotstack publishes no stable public address for the spec, so a copy lives
+// beside this script and is used by default. Replace that copy when the API
+// changes. The house rules next to it are ours, not the API's.
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const specPath = process.argv[2];
-if (!specPath) {
-	console.error('usage: node scripts/build-reference.mjs <openapi.json>');
-	process.exit(1);
-}
+const specPath = process.argv[2] ?? new URL('./shotstack-openapi.json', import.meta.url);
 
 const S = JSON.parse(readFileSync(specPath, 'utf8')).components.schemas;
 const deref = (v) => (v && v.$ref ? S[v.$ref.split('/').pop()] : v);
