@@ -29,7 +29,7 @@ async function readRenderStatus(
 	this: IExecutePaginationFunctions,
 	environment: string,
 	renderId: string,
-): Promise<{ status?: string; error?: string }> {
+): Promise<{ known: boolean; status?: string; error?: string }> {
 	try {
 		const render = (await this.helpers.httpRequestWithAuthentication.call(
 			this,
@@ -38,24 +38,37 @@ async function readRenderStatus(
 				method: 'GET',
 				url: `https://api.shotstack.io/edit/${environment}/render/${renderId}`,
 				json: true,
+				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,
 			},
-		)) as IDataObject;
-		const body = (render?.response ?? {}) as IDataObject;
-		return {
-			status: typeof body.status === 'string' ? body.status : undefined,
-			error: typeof body.error === 'string' ? body.error : undefined,
-		};
+		)) as { statusCode: number; body: IDataObject };
+
+		if (render.statusCode === 200) {
+			const body = (render.body?.response ?? {}) as IDataObject;
+			return {
+				known: true,
+				status: typeof body.status === 'string' ? body.status : undefined,
+				error: typeof body.error === 'string' ? body.error : undefined,
+			};
+		}
+
+		// Shotstack answers 400 for an ID it does not hold, not 404.
+		if (render.statusCode === 400 || render.statusCode === 404) {
+			return { known: true };
+		}
 	} catch {
-		// This call only improves the message. Never let it replace the real
-		// problem with a second one.
-		return {};
+		// Fall through. A failed check is not proof of anything.
 	}
+
+	// A rate limit, a timeout or an outage all land here. Saying "no such
+	// render" on this evidence would be a lie, so say nothing and keep waiting.
+	return { known: false };
 }
 
 /** Turns "no hosted file" into a sentence that names the real cause. */
 function describeMissingAsset(
 	this: IExecutePaginationFunctions,
+	known: boolean,
 	status: string | undefined,
 	renderError: string | undefined,
 	renderId: string,
@@ -63,7 +76,11 @@ function describeMissingAsset(
 	let message: string;
 	let description: string;
 
-	if (status === 'failed') {
+	if (!known) {
+		message = `No hosted file after ${MAX_WAIT_MS / 1000} seconds, and Shotstack did not answer when asked why`;
+		description =
+			'The render itself may be fine. Check the render in the Shotstack dashboard, then run this step again.';
+	} else if (status === 'failed') {
 		message = 'The render failed, so there is no file to host';
 		description = renderError
 			? `Shotstack reported: ${renderError}`
@@ -129,9 +146,11 @@ const waitForHostedAsset = async function (
 		// so a wrong ID or a failed render reports in ten seconds, not two
 		// minutes.
 		if (attempt === CHECK_RENDER_AFTER && response.statusCode !== 200) {
-			const { status, error } = await readRenderStatus.call(this, environment, renderId);
-			if (status === undefined || status === 'failed') {
-				return describeMissingAsset.call(this, status, error, renderId);
+			const check = await readRenderStatus.call(this, environment, renderId);
+			// Only stop early on a definite answer. An unanswered check keeps
+			// the loop running, so a hiccup never reads as a missing render.
+			if (check.known && (check.status === undefined || check.status === 'failed')) {
+				return describeMissingAsset.call(this, true, check.status, check.error, renderId);
 			}
 		}
 
@@ -154,8 +173,8 @@ const waitForHostedAsset = async function (
 	}
 
 	// Out of patience, or the key was refused. Either way, say why.
-	const { status, error } = await readRenderStatus.call(this, environment, renderId);
-	return describeMissingAsset.call(this, status, error, renderId);
+	const check = await readRenderStatus.call(this, environment, renderId);
+	return describeMissingAsset.call(this, check.known, check.status, check.error, renderId);
 };
 
 export const renderGetAssetsDescription: INodeProperties[] = [
