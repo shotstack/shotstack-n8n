@@ -44,6 +44,25 @@ anything. Switch to Production and paste the matching key when you go live.
 
 ## Operations
 
+### Reference → Get
+
+Hands back everything a language model needs to write a working recipe. **Call
+this before asking an AI to build a video.**
+
+| Field | Notes |
+| --- | --- |
+| **Include Templates** | On by default. Adds this account's templates, so an AI can pick one instead of writing a recipe from nothing. |
+
+Returns `reference`, a single string of about 6,700 characters holding every
+asset type, every allowed value, and the rules that decide whether a render
+looks good rather than merely succeeds.
+
+The API half is generated from Shotstack's OpenAPI file by
+`scripts/build-reference.mjs`, so it cannot drift. The house rules beside it are
+ours.
+
+
+
 ### Render → Render From Recipe (Best for AI)
 
 Renders a whole video recipe. **The only operation with no ceiling** — any

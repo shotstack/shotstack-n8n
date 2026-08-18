@@ -1,5 +1,6 @@
 import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 import { renderDescription } from './resources/render';
+import { referenceDescription } from './resources/reference';
 import { getTemplates } from './listSearch/getTemplates';
 
 export class Shotstack implements INodeType {
@@ -45,6 +46,10 @@ export class Shotstack implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Reference',
+						value: 'reference',
+					},
+					{
 						name: 'Render',
 						value: 'render',
 					},
@@ -52,6 +57,7 @@ export class Shotstack implements INodeType {
 				default: 'render',
 			},
 			...renderDescription,
+			...referenceDescription,
 		],
 	};
 

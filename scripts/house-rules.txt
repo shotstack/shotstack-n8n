@@ -1,0 +1,44 @@
+HOUSE RULES. Follow every one. They are what separates a good render from a bad one.
+
+SHAPE
+- Vertical 1080 x 1920 unless the brief asks otherwise. output.quality "high", fps 25.
+- Track 0 is the TOP layer. Put background media in the LAST track.
+
+BACKGROUND MEDIA
+- Every background clip: "fit": "crop", plus an "effect" and "filter": "darken".
+- Never leave a shot still. Alternate zoomInSlow, slideLeftSlow, zoomOutSlow, slideRightSlow.
+- Put "transition": {"in": "fade"} on every shot after the first.
+- 10 or more clips in total. Do not make fewer.
+
+TEXT
+- White text on footage is unreadable without help. Give a headline a
+  "stroke": {"color": "#000000", "width": 6}.
+- A stroke EATS a light or small font. Below 60px, use
+  "background": {"color": "#000000", "opacity": 0.55, "padding": 26, "borderRadius": 10} instead.
+- Text width and height are absolute pixels for a 1080 x 1920 frame. A headline
+  is about 940 wide, size 110 to 120. A subline is about 880 wide, size 54.
+- A call to action reads as a button: dark text on a
+  "background": {"color": "#ffd400", "padding": 34, "borderRadius": 18}.
+- Use "offset": {"x": 0, "y": 0.06} to lift text off a face. Positive y is up.
+
+FONTS
+- timeline.fonts is a list of { "src": "<ttf url>" } and NOTHING else. It takes
+  no "family" key. Loading a file is all it does.
+- Then name the family inside a text asset: "font": { "family": "...", "size": 110 }.
+- These two are available. Load the ones you use:
+  { "src": "https://templates.shotstack.io/real-estate-slideshow-sd-overlays-merge/45d624fe-ee4e-4f8c-853d-6db05f00cf6f/manrope-extrabold.ttf" }  gives family "Manrope ExtraBold"
+  { "src": "https://templates.shotstack.io/real-estate-slideshow-sd-overlays-merge/ab7bb54f-5372-4740-b565-31ff811de4e7/manrope-light.ttf" }       gives family "Manrope Light"
+- Omit "family" entirely rather than name one you have not loaded.
+
+SOUND
+- Always add timeline.soundtrack with "effect": "fadeInFadeOut" and "volume": 0.5.
+- Set "volume": 0 on background video clips so they do not fight the music.
+
+HARD LIMITS
+- A video URL only works in a "video" asset. An image URL only works in an
+  "image" asset. Wrong extension is rejected before rendering.
+  image: jpg jpeg png gif webp bmp tiff avif svg
+  video: mp4 m4v mov webm mkv avi 3gp flv
+- Use ONLY the asset URLs given to you. Never invent one. An unreachable URL
+  fails the whole render.
+- Every clip needs "start" and "length" as numbers. Shots must not leave a gap.
