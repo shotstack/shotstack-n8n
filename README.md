@@ -10,7 +10,7 @@ requests.
 [n8n](https://n8n.io) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/)
 workflow automation platform.
 
-[Installation](#installation) · [Credentials](#credentials) · [Operations](#operations) · [Waiting for a render](#waiting-for-a-render) · [Use with AI agents](#use-with-ai-agents) · [Example workflows](#example-workflows) · [Compatibility](#compatibility) · [Resources](#resources)
+[Installation](#installation) · [Credentials](#credentials) · [Operations](#operations) · [Waiting for a render](#waiting-for-a-render) · [Use with AI agents](#use-with-ai-agents) · [Compatibility](#compatibility) · [Resources](#resources)
 
 ## Installation
 
@@ -44,56 +44,25 @@ anything. Switch to Production and paste the matching key when you go live.
 
 ## Operations
 
-### Render → Render From Example
+### Render → Render From Recipe (Best for AI)
 
-Renders a ready-made edit. **Start here** — it is the fastest way to a real
-video, and it needs nothing but a key.
-
-| Field | Notes |
-| --- | --- |
-| **Example** | Pick one of ten edits. |
-| **Callback URL** | Optional, see [Waiting for a render](#waiting-for-a-render). |
-
-Every one of these was rendered on the sandbox before release. Shapes and
-lengths below are measured, not estimated.
-
-| Example | Shape | Length |
-| --- | --- | --- |
-| Vertical Social Short (9:16) | **1080×1920 vertical** | 6s |
-| Starter: Title, Image and Video | SD 16:9 | 10s |
-| Photo Slideshow (Ken Burns) | HD 16:9 | 29s |
-| Car Sale Slideshow | 1920×1080 | 36s |
-| Car Walkaround | HD 16:9 | 13s |
-| Real Estate Listing (with Merge Fields) | SD 16:9 | 36s |
-| Hotel or Travel Slideshow | 1920×1080 | 30s |
-| Kinetic Text | 1024×576 | 17s |
-| News Summary Video | HD 16:9 | 31s |
-| Health and Wellbeing Advert | **1080×1080 square** | 15s |
-
-Nine come from Shotstack's [template library](https://shotstack.io/templates/).
-The vertical one is ours — the library has no vertical example, and vertical is
-the most common shape in real automation traffic.
-
-**To change one:** run it, then switch to **Render From Edit** and paste the
-JSON from that template's page in the library. The examples render as-is; they
-are a starting point, not a form. Only the real estate listing carries merge
-placeholders, and using them needs **Render From Template**, not this operation.
-
-### Render → Render From Edit
-
-Renders a video or image from a full Shotstack edit.
+Renders a whole video recipe. **The only operation with no ceiling** — any
+number of clips, any asset type, and the generative assets. This is the one to
+point an AI agent at.
 
 | Field | Notes |
 | --- | --- |
-| **Edit** | The whole edit: a `timeline` of tracks and clips, plus `output` settings. Paste one from the [docs](https://shotstack.io/docs/guide/) or [Studio](https://shotstack.io/studio/), or build it with an expression. |
+| **Edit** | The whole recipe: a `timeline` of tracks and clips, plus `output` settings. Paste one from the [docs](https://shotstack.io/docs/guide/) or [Studio](https://shotstack.io/studio/), or build it with an expression. |
 | **Callback URL** | Optional. Shotstack posts the finished render here — see [Waiting for a render](#waiting-for-a-render). |
 
-Returns the render `id`. The video is not ready yet.
+A recipe can also contain Shotstack's generative assets, which a template
+cannot add on its own:
 
-Everything the Edit API supports works here, because the edit is passed through
-untouched. That includes generative asset types such as `text-to-speech`,
-`text-to-image` and `image-to-video` — they are clips inside the timeline, not
-separate operations.
+| Asset type | You give | You get |
+| --- | --- | --- |
+| `text-to-image` | a prompt | an image |
+| `image-to-video` | an image and a prompt | that image, moving |
+| `text-to-speech` | text and a voice | narration |
 
 ### Render → Render From Template
 
@@ -192,13 +161,20 @@ minutes, so allow roughly 30 passes at 20 seconds before giving up.
 
 The node is exposed as a tool, so an **AI Agent** node can call it directly.
 
-**Point an agent at Render From Template, or at Render From Edit.** Not at
-Render From Example — its dropdown cannot be driven by an expression, so an
-agent handed that operation can only fire a fixed stock clip.
+**Point an agent at Render From Recipe, or at Render From Template.**
 
-Render From Template usually works best. An agent fills three merge fields
-reliably; a forty-line timeline much less so. Save a template, then let the
-agent supply the text.
+Render From Template is the safer of the two. An agent fills a handful of merge
+fields reliably; a forty-line timeline much less so. Save a template, then let
+the agent supply the values.
+
+For that path, set **Merge Fields Source** to **JSON** so the agent can hand
+over the whole list at once.
+
+**Merge every field, or send none.** A partial merge replaces the template's
+stored list rather than adding to it, so a field the agent leaves out is not
+filled in from the template — text renders as a raw placeholder, and an image
+or video placeholder fails the render. Fill any gaps from the template's own
+defaults before you send.
 
 ## Example workflows
 

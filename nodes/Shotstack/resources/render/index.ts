@@ -1,5 +1,4 @@
 import type { INodeProperties, PostReceiveAction } from 'n8n-workflow';
-import { renderFromExampleDescription } from './renderFromExample';
 import { renderFromJsonDescription } from './renderFromJson';
 import { renderFromTemplateDescription } from './renderFromTemplate';
 import { renderGetDescription } from './get';
@@ -36,23 +35,12 @@ export const renderDescription: INodeProperties[] = [
 		displayOptions: { show: showOnlyForRender },
 		options: [
 			{
-				name: 'Render From Example',
-				value: 'renderFromExample',
-				description: 'Render a ready-made edit. The quickest way to a real video.',
-				action: 'Render a video from an example',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '/render',
-					},
-					output: { postReceive: unwrapResponse },
-				},
-			},
-			{
-				name: 'Render From Edit',
+				name: 'Render From Recipe (Best for AI)',
+				// The stored value stays renderFromJson so saved workflows keep working.
 				value: 'renderFromJson',
-				description: 'Render a video from a full Shotstack edit',
-				action: 'Render a video from an edit',
+				description:
+					'Render a whole video recipe. The only action with no ceiling: any number of clips, any asset type, and the generative assets. Best target for an AI agent.',
+				action: 'Render a video from a recipe',
 				routing: {
 					request: {
 						method: 'POST',
@@ -110,9 +98,8 @@ export const renderDescription: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'renderFromExample',
+		default: 'renderFromJson',
 	},
-	...renderFromExampleDescription,
 	...renderFromJsonDescription,
 	...renderFromTemplateDescription,
 	...renderGetDescription,
