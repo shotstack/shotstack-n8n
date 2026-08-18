@@ -51,6 +51,7 @@ this before asking an AI to build a video.**
 
 | Field | Notes |
 | --- | --- |
+| **Detail** | `Compact` (default) or `Full`. See below. |
 | **Include Templates** | On by default. Adds this account's templates, so an AI can pick one instead of writing a recipe from nothing. |
 
 Returns `reference`, a single string of about 6,700 characters holding every
@@ -60,6 +61,16 @@ looks good rather than merely succeeds.
 The API half is generated from Shotstack's OpenAPI file by
 `scripts/build-reference.mjs`, so it cannot drift. The house rules beside it are
 ours.
+
+**Detail: Full** also fetches
+[Shotstack's guide for language models](https://shotstack.io/docs/guide/llms-full.txt),
+about 271,000 characters with 213 worked examples. The two cover different
+ground: the guide teaches by example, the compact reference is the exhaustive
+list of allowed values. Effect names, transition names and the file-extension
+lists appear only in the compact half.
+
+Use Full with a model that has a large context window. If the fetch fails the
+step still succeeds, with `documentationError` explaining what is missing.
 
 
 

@@ -21,12 +21,18 @@ const showOnly = {
  * The call to /templates is not wasted: it proves the key works and it tells
  * the model which templates this account can already render.
  */
+// Shotstack maintains a plain-text copy of its whole guide for language
+// models. It carries worked examples the generated reference cannot: prose,
+// context, and 213 code blocks.
+const FULL_DOCS_URL = 'https://shotstack.io/docs/guide/llms-full.txt';
+
 const buildReference = async function (
 	this: IExecuteSingleFunctions,
 	_items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const includeTemplates = this.getNodeParameter('includeTemplates', true) as boolean;
+	const detail = this.getNodeParameter('detail', 'compact') as string;
 
 	const body = (response.body ?? {}) as IDataObject;
 	const payload = (body.response ?? {}) as IDataObject;
@@ -36,6 +42,26 @@ const buildReference = async function (
 	}));
 
 	const json: IDataObject = { reference: RECIPE_REFERENCE };
+
+	if (detail === 'full') {
+		try {
+			// Shotstack's own guide. Fetched rather than embedded so it stays
+			// current, and left out of the compact answer because it is large.
+			const docs = (await this.helpers.httpRequest({
+				method: 'GET',
+				url: FULL_DOCS_URL,
+				json: false,
+			})) as string;
+			json.documentation = docs;
+			json.documentationChars = String(docs).length;
+		} catch {
+			// The reference alone is still useful. Say what is missing rather
+			// than fail the whole step.
+			json.documentation = '';
+			json.documentationError = `Could not reach ${FULL_DOCS_URL}. The compact reference above is still complete for asset types and allowed values.`;
+		}
+	}
+
 	if (includeTemplates) {
 		json.templates = templates;
 		json.templateCount = templates.length;
@@ -67,6 +93,28 @@ export const referenceDescription: INodeProperties[] = [
 			},
 		],
 		default: 'get',
+	},
+	{
+		displayName: 'Detail',
+		name: 'detail',
+		type: 'options',
+		default: 'compact',
+		displayOptions: { show: { ...showOnly, operation: ['get'] } },
+		description:
+			'How much to hand the model. Compact is enough to write a valid recipe. Full adds Shotstack\'s whole guide, which teaches by example but is large',
+		options: [
+			{
+				name: 'Compact',
+				value: 'compact',
+				description: 'About 6,700 characters. Every asset type, every allowed value, and the house rules.',
+			},
+			{
+				name: 'Full',
+				value: 'full',
+				description:
+					"Adds Shotstack's guide for language models, about 271,000 characters with 213 worked examples. Use with a model that has a large context window.",
+			},
+		],
 	},
 	{
 		displayName: 'Include Templates',
