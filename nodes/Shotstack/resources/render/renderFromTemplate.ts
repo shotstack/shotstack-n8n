@@ -52,13 +52,54 @@ export const renderFromTemplateDescription: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Merge Fields Source',
+		name: 'mergeSource',
+		type: 'options',
+		noDataExpression: true,
+		default: 'fields',
+		displayOptions: { show: showOnly },
+		description:
+			'Whether to fill the placeholders one at a time, or hand over a ready-made list. Choose JSON when an earlier step or an AI agent builds the list.',
+		options: [
+			{
+				name: 'Fields',
+				value: 'fields',
+				description: 'Type each placeholder and its value',
+			},
+			{
+				name: 'JSON',
+				value: 'json',
+				description: 'Supply the whole list as [{"find":"NAME","replace":"value"}]',
+			},
+		],
+	},
+	{
+		displayName: 'Merge Fields (JSON)',
+		name: 'mergeJson',
+		type: 'json',
+		default: '',
+		placeholder: '[{"find": "HEADLINE", "replace": "Hello"}]',
+		displayOptions: { show: { ...showOnly, mergeSource: ['json'] } },
+		description:
+			'A list of find and replace pairs. Send every placeholder the template declares — one you leave out is not filled in from the template, it stays as raw text, and an image or video placeholder then fails the render.',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'merge',
+				// parseJson, not JSON.parse: the expression engine swallows a
+				// SyntaxError and would send an empty body instead of failing.
+				value: '={{ typeof $value === "string" ? $value.parseJson() : $value }}',
+			},
+		},
+	},
+	{
 		displayName: 'Merge Fields',
 		name: 'merge',
 		placeholder: 'Add Merge Field',
 		type: 'fixedCollection',
 		typeOptions: { multipleValues: true },
 		default: {},
-		displayOptions: { show: showOnly },
+		displayOptions: { show: { ...showOnly, mergeSource: ['fields'] } },
 		description: 'Replaces placeholders in the template. A template placeholder written as {{ HEADLINE }} is matched by the find value HEADLINE.',
 		options: [
 			{
