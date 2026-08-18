@@ -6,7 +6,7 @@ First version.
 
 ### Added
 
-- **Shotstack** node with a Render resource and five operations:
+- **Shotstack** node with a Render resource and six operations:
   - **Render From Example** — the default. Ten ready-made edits in a
     dropdown, each rendering as-is. Nine are Shotstack's published templates;
     the vertical one is ours, because the library has no vertical example and
@@ -17,6 +17,8 @@ First version.
     merge fields.
   - **Get** — `GET /render/{id}`, with an Include Submitted Edit toggle and a
     Simplify toggle.
+  - **Download Video** — fetches the finished file as binary data, so it can be
+    attached to an email or uploaded straight from n8n.
   - **Get Hosted Asset** — `GET /assets/render/{id}` on the Serve API, for the
     permanent CDN URL. The URL returned by **Get** is a direct storage link that
     expires after 24 hours, so anything stored or published should use this.

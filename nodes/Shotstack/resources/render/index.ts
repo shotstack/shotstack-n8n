@@ -4,6 +4,7 @@ import { renderFromJsonDescription } from './renderFromJson';
 import { renderFromTemplateDescription } from './renderFromTemplate';
 import { renderGetDescription } from './get';
 import { renderGetAssetsDescription } from './getAssets';
+import { renderDownloadDescription } from './download';
 
 const showOnlyForRender = {
 	resource: ['render'],
@@ -86,6 +87,17 @@ export const renderDescription: INodeProperties[] = [
 				},
 			},
 			{
+				name: 'Download Video',
+				value: 'download',
+				description: 'Fetch the finished video as a file, ready for the next step',
+				action: 'Download the video file',
+				routing: {
+					request: {
+						method: 'GET',
+					},
+				},
+			},
+			{
 				name: 'Get Hosted Asset',
 				value: 'getAssets',
 				description: 'Get the permanent CDN URL for a finished render',
@@ -105,4 +117,5 @@ export const renderDescription: INodeProperties[] = [
 	...renderFromTemplateDescription,
 	...renderGetDescription,
 	...renderGetAssetsDescription,
+	...renderDownloadDescription,
 ];

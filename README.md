@@ -138,6 +138,19 @@ system. The URL looks like `https://cdn.shotstack.io/...` and does not expire.
 
 Call it once the render reports `done`.
 
+### Render → Download Video
+
+Fetches the finished video as a **file**, so the next node can attach it to an
+email, upload it to Drive or push it anywhere that needs the actual bytes.
+
+| Field | Notes |
+| --- | --- |
+| **Video URL** | Defaults to `{{ $json.url }}`, so placing this straight after **Get Hosted Asset** needs no setup. |
+| **File Name** | Optional. Leave blank to keep Shotstack's name. |
+
+Most posting nodes accept a URL and do not need this. Use it when the next step
+needs the file itself.
+
 ### Output shape
 
 Shotstack wraps every response as `{ success, message, response }`. This node
