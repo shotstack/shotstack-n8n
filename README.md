@@ -51,30 +51,33 @@ video, and it needs nothing but a key.
 
 | Field | Notes |
 | --- | --- |
-| **Example** | Pick one of eleven edits. |
+| **Example** | Pick one of ten edits. |
 | **Callback URL** | Optional, see [Waiting for a render](#waiting-for-a-render). |
+
+Every one of these was rendered on the sandbox before release. Shapes and
+lengths below are measured, not estimated.
 
 | Example | Shape | Length |
 | --- | --- | --- |
-| Vertical Social Short (9:16) | vertical | 6s |
-| Starter: Title, Image and Video | landscape | short |
-| Photo Slideshow (Ken Burns) | landscape | 29s |
+| Vertical Social Short (9:16) | **1080×1920 vertical** | 6s |
+| Starter: Title, Image and Video | SD 16:9 | 10s |
+| Photo Slideshow (Ken Burns) | HD 16:9 | 29s |
 | Car Sale Slideshow | 1920×1080 | 36s |
-| Car Walkaround | landscape | short |
-| Real Estate Listing (with Merge Fields) | landscape | 36s |
-| Real Estate Walkthrough (1080p) | 1920×1080 | — |
-| Hotel or Travel Slideshow | 1920×1080 | — |
+| Car Walkaround | HD 16:9 | 13s |
+| Real Estate Listing (with Merge Fields) | SD 16:9 | 36s |
+| Hotel or Travel Slideshow | 1920×1080 | 30s |
 | Kinetic Text | 1024×576 | 17s |
-| News Summary Video | landscape | — |
-| Health and Wellbeing Advert | landscape | — |
+| News Summary Video | HD 16:9 | 31s |
+| Health and Wellbeing Advert | **1080×1080 square** | 15s |
 
-Ten come from Shotstack's [template library](https://shotstack.io/templates/).
+Nine come from Shotstack's [template library](https://shotstack.io/templates/).
 The vertical one is ours — the library has no vertical example, and vertical is
 the most common shape in real automation traffic.
 
 **To change one:** run it, then switch to **Render From Edit** and paste the
 JSON from that template's page in the library. The examples render as-is; they
-are a starting point, not a form.
+are a starting point, not a form. Only the real estate listing carries merge
+placeholders, and using them needs **Render From Template**, not this operation.
 
 ### Render → Render From Edit
 
@@ -110,7 +113,7 @@ Checks a render and returns its status.
 
 | Field | Notes |
 | --- | --- |
-| **Render ID** | The id returned by either render operation. |
+| **Render ID** | The id returned by any render operation. |
 | **Include Submitted Edit** | Off by default. Keeps polling responses small. |
 | **Simplify** | On by default. Returns `id`, `status`, `url`, `poster`, `thumbnail`, `duration`, `renderTime` and `error`. Turn it off for the full response. |
 
@@ -127,7 +130,7 @@ Returns the permanent CDN URL for a finished render.
 
 | Field | Notes |
 | --- | --- |
-| **Render ID** | The id returned by either render operation. |
+| **Render ID** | The id returned by any render operation. |
 | **Simplify** | On by default. Returns `id`, `renderId`, `url`, `filename`, `filesize` and `status`. |
 
 Use this for any URL you intend to store, email, publish or hand to another
@@ -176,9 +179,13 @@ minutes, so allow roughly 30 passes at 20 seconds before giving up.
 
 The node is exposed as a tool, so an **AI Agent** node can call it directly.
 
-**Render From Template** works better than **Render From Edit** for agents. An
-agent fills three merge fields reliably; a forty-line timeline much less so.
-Save a template, then let the agent supply the text.
+**Point an agent at Render From Template, or at Render From Edit.** Not at
+Render From Example — its dropdown cannot be driven by an expression, so an
+agent handed that operation can only fire a fixed stock clip.
+
+Render From Template usually works best. An agent fills three merge fields
+reliably; a forty-line timeline much less so. Save a template, then let the
+agent supply the text.
 
 ## Example workflows
 

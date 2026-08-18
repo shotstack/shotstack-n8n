@@ -7,8 +7,8 @@ First version.
 ### Added
 
 - **Shotstack** node with a Render resource and five operations:
-  - **Render From Example** — the default. Eleven ready-made edits in a
-    dropdown, each rendering as-is. Ten are Shotstack's published templates;
+  - **Render From Example** — the default. Ten ready-made edits in a
+    dropdown, each rendering as-is. Nine are Shotstack's published templates;
     the vertical one is ours, because the library has no vertical example and
     vertical is the most common shape in real automation traffic. A new user
     can render a real video without writing any JSON.
@@ -23,7 +23,7 @@ First version.
 - **Shotstack API** credential with a Sandbox/Production switch, defaulting to
   Sandbox so the node can be tried without spending credits. Includes a
   credential test.
-- **Callback URL** on both render operations, so a workflow can continue from a
+- **Callback URL** on all three render operations, so a workflow can continue from a
   Webhook node instead of chaining a Wait node and polling.
 - Responses are unwrapped from Shotstack's `{ success, message, response }`
   envelope, so workflows read `{{$json.id}}`.

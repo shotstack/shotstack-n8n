@@ -77,16 +77,6 @@ export const renderFromExampleDescription: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Real Estate Walkthrough (1080p)',
-				value: 'realEstateWalkthrough1080Overlays',
-				description: 'Property walkthrough with text overlays',
-				routing: {
-					request: {
-						body: EXAMPLE_EDITS.realEstateWalkthrough1080Overlays,
-					},
-				},
-			},
-			{
 				name: 'Hotel or Travel Slideshow',
 				value: 'hotelReviewSlideshow',
 				description: 'Accommodation and travel promotion',
