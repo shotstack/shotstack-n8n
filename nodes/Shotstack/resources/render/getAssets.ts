@@ -9,6 +9,7 @@ import type {
 	PostReceiveAction,
 } from 'n8n-workflow';
 import { isRenderId } from './renderId';
+import { USER_AGENT } from '../../userAgent';
 
 const showOnly = {
 	resource: ['render'],
@@ -21,10 +22,13 @@ const MAX_WAIT_MS = 120000;
 // work. A missing or failed render never becomes a hosted file.
 const CHECK_RENDER_AFTER = 3;
 
-const POSTER_EXTENSIONS = /\.(jpg|jpeg|png|webp|bmp|gif)$/i;
+// Shotstack names the extras "<id>-poster.jpg" and "<id>-thumbnail.jpg". Match
+// the suffix, not the extension: gif, jpg, png and bmp are all output formats
+// too, so an extension test drops the rendered file itself.
+const EXTRA_FILES = /-(poster|thumb|thumbnail)\.[a-z0-9]+$/i;
 
 /**
- * Drops the poster and thumbnail, so the next step gets the video.
+ * Drops the poster and thumbnail, so the next step gets the rendered file.
  *
  * One render hosts several files. Without this the workflow runs once per
  * file, and Download Video saves a JPEG named like a video.
@@ -41,8 +45,8 @@ const keepMainFile: PostReceiveAction = async function (
 		return String(attributes.filename ?? attributes.url ?? '').split('?')[0];
 	};
 
-	const main = items.filter((item) => !POSTER_EXTENSIONS.test(nameOf(item)));
-	// An image render has no video, so every file looks like a poster.
+	const main = items.filter((item) => !EXTRA_FILES.test(nameOf(item)));
+	// Keep everything rather than nothing if the naming ever changes.
 	return main.length > 0 ? main : items;
 };
 
@@ -64,6 +68,8 @@ async function readRenderStatus(
 				json: true,
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,
+				timeout: 30000,
+				headers: { 'User-Agent': USER_AGENT },
 			},
 		)) as { statusCode: number; body: IDataObject };
 
@@ -144,8 +150,7 @@ const waitForHostedAsset = async function (
 	const environment = environmentFrom(baseURL);
 	const renderId = String(this.getNodeParameter('renderId', '') ?? '').trim();
 
-	// Checked here, not in a preSend. This hook builds its own requests, so a
-	// preSend would run too late to keep a bad value out of the URL.
+	// The wait loop below builds its own requests, so check the ID here too.
 	if (!isRenderId(renderId)) {
 		throw new NodeOperationError(this.getNode(), 'That is not a Shotstack render ID', {
 			description: `A render ID looks like 4a37ef85-b4d1-4b4a-90be-6515290c5091. Got "${renderId}". The render actions return it as "id".`,
@@ -164,6 +169,8 @@ const waitForHostedAsset = async function (
 				json: true,
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,
+				timeout: 30000,
+				headers: { 'User-Agent': USER_AGENT },
 			})) as { statusCode: number; body: IDataObject };
 		} catch {
 			// A dropped connection is not an answer. Keep waiting.
@@ -200,6 +207,15 @@ const waitForHostedAsset = async function (
 					itemIndex: this.getItemIndex(),
 				});
 			}
+			// A deleted file never becomes ready, so waiting for it would run the
+			// full two minutes and then report the render as unpublished.
+			if (states.some((s) => s === 'deleted')) {
+				throw new NodeOperationError(this.getNode(), 'Shotstack has deleted a file from this render', {
+					description:
+						'The render finished, but a hosted file is gone. Sandbox renders are removed after a time. Render it again.',
+					itemIndex: this.getItemIndex(),
+				});
+			}
 			if (states.length > 0 && states.every((s) => s === 'ready')) {
 				// Run the real request so the output goes through Simplify.
 				return await this.makeRoutingRequest(requestData);
@@ -219,7 +235,8 @@ export const renderGetAssetsDescription: INodeProperties[] = [
 		name: 'renderId',
 		type: 'string',
 		required: true,
-		default: '',
+		// Both render operations return the id as "id", so the chain needs no setup.
+		default: '={{ .id }}',
 		placeholder: '4a37ef85-b4d1-4b4a-90be-6515290c5091',
 		displayOptions: { show: showOnly },
 		description:

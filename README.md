@@ -202,21 +202,30 @@ No Wait node, no Switch, no loop. A failed render stops the step and reports the
 reason Shotstack gave, rather than looping forever.
 
 It holds the n8n execution open while it waits, so use **Give Up After** to bound
-it — 10 minutes by default. For a long queue, or a render using the generative
-assets, prefer the callback below.
+it — 10 minutes by default, 60 at most.
 
-### Callback
+Two things to watch. Your n8n may stop an execution before that: check
+`EXECUTIONS_TIMEOUT` on a self-hosted instance. And the wait runs **once per
+input item, at the same time** — 50 render IDs means 50 poll loops at once, so
+batch them or use a callback instead.
+
+### Callback (best for long or bulk renders)
 
 1. Add a **Webhook** node and copy its URL.
 2. Paste that URL into **Callback URL** on the render operation.
 
 Shotstack posts to it when the render finishes, and the workflow continues from
-the Webhook node. Nothing polls and nothing waits.
+the Webhook node. Nothing polls and nothing waits, so this is the one to use for
+a long render, a generative render, or many at once.
 
-### Wait loop (only if you need one)
+**Shotstack must be able to reach that URL.** A self-hosted n8n behind a home
+router or a company firewall cannot receive it. If that is you, use the wait
+above, or the wait loop below for a render longer than 60 minutes.
 
-You should not need this now that **Get** can wait. It is here because some
-workflows want to do other work between checks.
+### Wait loop
+
+Use this when neither of the above fits: a render longer than 60 minutes, or an
+n8n that Shotstack cannot reach.
 
 ```
 Shotstack (Render) → Wait (20s) → Shotstack (Get) → Switch on {{$json.status}}

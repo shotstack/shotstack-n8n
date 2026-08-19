@@ -48,19 +48,36 @@ const line = (name, schema, keep) => {
 const out = [
 	'SHOTSTACK RECIPE REFERENCE  (* = required)',
 	'',
-	'A recipe is: { "timeline": { "background", "fonts", "soundtrack", "tracks" }, "output": {...} }',
+	// Do not name soundtrack here. It is deprecated, and this sentence is the
+	// first structural thing a model reads, so it outweighs the rules below.
+	'A recipe is: { "timeline": { "background", "fonts", "tracks" }, "output": {...} }',
 	'tracks is an array of { "clips": [...] }. TRACK 0 IS THE TOP LAYER. Background media goes in the LAST track.',
 	'',
+	// width and height belong here. They are clip properties, and the rules
+	// below tell the model to size text with them, so leaving them out of the
+	// grammar contradicts the rules.
 	'CLIP',
-	line('', S.Clip, ['asset', 'start', 'length', 'fit', 'scale', 'position', 'offset', 'transition', 'effect', 'filter', 'opacity']),
+	line('', S.Clip, ['asset', 'start', 'length', 'width', 'height', 'fit', 'scale', 'position', 'offset', 'transition', 'effect', 'filter', 'opacity']),
 	'',
 	'ASSET TYPES',
 ];
-// Skip the deprecated types. Listing html and title taught the model to write
-// assets the API no longer wants.
+// Skip the deprecated types. The spec's own flag is set on html and title
+// only, but Shotstack also deprecates text, caption and shape — that list
+// lives in the agent skill, so read it from there rather than repeat it.
+const skill = readFileSync(
+	new URL('../node_modules/@shotstack/cli/skills/shotstack/shared/agent-core.md', import.meta.url),
+	'utf8',
+);
+const from = skill.indexOf('### Deprecated');
+const to = skill.indexOf('They still parse', from);
+if (from === -1 || to <= from) {
+	throw new Error('Could not read the deprecation list from @shotstack/cli. Check the skill layout.');
+}
+const deprecated = new Set((skill.slice(from, to).match(/`([a-z][a-z0-9-]*)`/g) ?? []).map((t) => t.slice(1, -1)));
+
 for (const key of Object.keys(S).filter((k) => /Asset$/.test(k) && k !== 'Asset')) {
 	const t = S[key].properties?.type?.enum?.[0];
-	if (t && !S[key].deprecated) out.push(line(`"${t}"`.padEnd(17), S[key]));
+	if (t && !S[key].deprecated && !deprecated.has(t)) out.push(line(`"${t}"`.padEnd(17), S[key]));
 }
 out.push('', 'OUTPUT');
 out.push(line('', S.Output, ['format', 'size', 'resolution', 'aspectRatio', 'fps', 'quality']));

@@ -31,11 +31,13 @@ const cases = [
 ];
 
 let failed = 0;
+let passed = 0;
 for (const [label, options, shouldSend] of cases) {
 	const result = await credential.authenticate(credentials, { ...options, headers: {} });
 	const sent = Boolean(result.headers && result.headers['x-api-key']);
 	try {
 		assert.equal(sent, shouldSend);
+		passed += 1;
 		console.log(`  ok    ${label}`);
 	} catch {
 		failed += 1;
@@ -43,22 +45,24 @@ for (const [label, options, shouldSend] of cases) {
 	}
 }
 
-// The User-Agent names this node in Shotstack's render log. It carries the
-// version as a literal, so a release that bumps only package.json makes every
-// render report the old one. Fail here instead.
-const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-const node = await readFile(new URL('../dist/nodes/Shotstack/Shotstack.node.js', import.meta.url), 'utf8');
-const agent = node.match(/shotstack-n8n-node\/([\d.]+)/)?.[1];
-try {
-	assert.equal(agent, version);
-	console.log(`  ok    User-Agent reports ${version}`);
-} catch {
-	failed += 1;
-	console.error(`  FAIL  User-Agent says ${agent}, package.json says ${version}`);
+// Every request must name this node, including the hand-rolled ones in the wait
+// loops. n8n replaces a missing User-Agent with a bare "n8n", which is what a
+// plain HTTP Request node sends, so a render made here becomes uncountable.
+const built = ['Shotstack.node', 'resources/render/get', 'resources/render/getAssets'];
+for (const name of built) {
+	const source = await readFile(new URL(`../dist/nodes/Shotstack/${name}.js`, import.meta.url), 'utf8');
+	try {
+		assert.match(source, /USER_AGENT|user-agent/i);
+		passed += 1;
+		console.log(`  ok    ${name} sends a User-Agent`);
+	} catch {
+		failed += 1;
+		console.error(`  FAIL  ${name} makes requests without a User-Agent`);
+	}
 }
 
 if (failed) {
 	console.error(`\n${failed} failing`);
 	process.exit(1);
 }
-console.log(`\n${cases.length + 1} passing`);
+console.log(`\n${passed} passing`);

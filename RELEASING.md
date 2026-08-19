@@ -26,17 +26,29 @@ Three things must be true. None of them are in this repository.
 ## Making a release
 
 ```bash
+npm test        # the release command does NOT run these
 npm run release
 ```
 
-It lints, builds, tests, asks for the version, updates the changelog, commits,
-tags and pushes. The tag starts `publish.yml`, which publishes to npm.
+`npm run release` lints, builds, asks for the version, commits, tags and pushes.
+**It does not run the tests** — its only local hook is lint and build — so run
+them yourself first. The tag then starts `publish.yml`, which publishes to npm.
 
-Two guards run before anything is published:
+Three guards run in CI before anything is published:
 
 - **The tag must be on `main`.** A tag on any other branch is refused.
-- **The full test suite and the reference drift check run again**, because a tag
+- **The full test suite and the reference drift check run**, because a tag
   triggers neither `ci.yml` nor the release command's own hooks.
+- **A prerelease tag goes to the `next` dist-tag.** Tagging `0.2.0-rc.1` would
+  otherwise become `latest` and be served to every install, because the publish
+  is a bare `npm publish` and npm does not read the version.
+
+In CI the release command runs `npm publish` and nothing else. The version bump,
+the tag and the changelog all happen on your machine.
+
+`release-it` regenerates `.auto-changelog.md` from git history as it bumps.
+`CHANGELOG.md` is written by hand and is the real one. Keep it that way — the
+generated file is ignored by git.
 
 ## If a bad version reaches npm
 

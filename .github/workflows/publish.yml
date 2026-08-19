@@ -81,8 +81,11 @@ jobs:
       - name: Refuse a tag that is not on main
         # The tag filter above accepts a tag on any branch, so without this a
         # tag on a scratch branch publishes to npm under the @shotstack name.
+        #
+        # Do not fetch here. fetch-depth: 0 already gave a complete origin/main,
+        # and a --depth=1 fetch would shallow it, so merge-base could no longer
+        # walk the ancestry and every tag but main's exact tip would be refused.
         run: |
-          git fetch --no-tags --depth=1 origin main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "Tag $GITHUB_REF_NAME points at a commit that is not on main."
             echo "Merge to main first, then tag."
@@ -112,6 +115,18 @@ jobs:
             echo "Run: node scripts/build-reference.mjs   then commit the result."
             exit 1
           fi
+
+      - name: Send a prerelease to the "next" tag, not "latest"
+        # `n8n-node release` runs a bare `npm publish`, and npm always writes to
+        # the latest tag unless told otherwise — it does not read the version.
+        # Without this, tagging 0.2.0-rc.1 to try something serves that RC to
+        # every install, and only the scope owner can undo it.
+        run: |
+          case "$GITHUB_REF_NAME" in
+            *-*) echo "npm_config_tag=next" >> "$GITHUB_ENV"
+                 echo "$GITHUB_REF_NAME is a prerelease. Publishing to the next tag." ;;
+            *)   echo "$GITHUB_REF_NAME is a full release. Publishing to latest." ;;
+          esac
 
       - name: Release
         # Publishes to npm with a provenance attestation (requires id-token: write above).

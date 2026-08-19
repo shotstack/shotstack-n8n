@@ -69,8 +69,13 @@ for (const relative of manifest.n8n.nodes) {
 	check(`${relative} loads`, () => {
 		const { path, instance } = load(relative);
 		const d = instance.description;
-		for (const field of ['displayName', 'name', 'version', 'inputs', 'outputs', 'properties']) {
-			assert.ok(d[field] !== undefined, `description.${field} is missing`);
+		// Length, not !== undefined. An empty array is present but useless, and
+		// it would make the operation loop below iterate zero times and pass.
+		for (const field of ['displayName', 'name', 'version']) {
+			assert.ok(d[field], `description.${field} is missing or empty`);
+		}
+		for (const field of ['inputs', 'outputs', 'properties']) {
+			assert.ok(d[field]?.length, `description.${field} is missing or empty`);
 		}
 		for (const [theme, value] of Object.entries(d.icon ?? {})) {
 			assert.ok(iconExists(path, value), `${theme} icon missing: ${value}`);

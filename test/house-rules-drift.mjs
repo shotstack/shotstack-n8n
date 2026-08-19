@@ -31,7 +31,14 @@ const check = (label, run) => {
 		console.log(`  ok    ${label}`);
 	} catch (error) {
 		failed += 1;
-		console.error(`  FAIL  ${label}\n        ${error.message.split('\n')[0]}`);
+		// execFileSync puts the child's output on .stderr/.stdout, not in
+		// .message. Without these the validator's actual complaint is lost and
+		// the failure reads as a bare "Command failed".
+		const detail = [error.message.split('\n')[0], error.stderr?.toString(), error.stdout?.toString()]
+			.filter(Boolean)
+			.join('\n')
+			.trim();
+		console.error(`  FAIL  ${label}\n${detail.replace(/^/gm, '        ')}`);
 	}
 };
 
@@ -50,21 +57,36 @@ check('every font URL we hand out is in the official catalogue', () => {
 	assert.deepEqual(invented, [], `not in the official catalogue: ${invented.join(' ')}`);
 });
 
-check('every font family we name matches its own URL basename', () => {
-	const ours = houseRules.match(/https:\/\/fonts\.gstatic\.com\/\S+\.ttf/g) ?? [];
-	const missing = ours
-		.map((url) => url.split('/').pop().replace(/\.ttf$/, ''))
-		.filter((basename) => !houseRules.includes(basename + ' '));
-	assert.deepEqual(missing, [], `family missing beside its URL: ${missing.join(' ')}`);
+check('every font family the rules name is one the renderer can find', () => {
+	// The original bug was font.family: "Manrope ExtraBold" — a human-readable
+	// name. The family must be the URL basename, or one of the built-ins. Check
+	// the worked examples, because that is what a model copies.
+	const basenames = (houseRules.match(/https:\/\/fonts\.gstatic\.com\/\S+\.ttf/g) ?? []).map((url) =>
+		url.split('/').pop().replace(/\.ttf$/, ''),
+	);
+	const builtIn = [...fonts.matchAll(/^\|\s*`([^`]+)`\s*\|\s*\*{0,2}\d/gm)].map((m) => m[1]);
+	assert.ok(builtIn.length >= 10, 'could not read the built-in font table from the skill');
+
+	const named = [...houseRules.matchAll(/"family":\s*"([^"]+)"/g)].map((m) => m[1]);
+	assert.ok(named.length > 0, 'the rules show no font.family example to check');
+
+	const unloadable = named.filter((f) => !basenames.includes(f) && !builtIn.includes(f));
+	assert.deepEqual(unloadable, [], `neither a loaded basename nor a built-in: ${unloadable.join(', ')}`);
 });
 
 check('the house rules name every asset type Shotstack deprecates', () => {
 	// The skill states them in one sentence:
 	//   `text`, `title`, `caption`, `html`, `shape`. They still parse but ...
 	const start = skill.indexOf('### Deprecated');
-	const sentence = skill.slice(start, skill.indexOf('They still parse', start));
+	const end = skill.indexOf('They still parse', start);
+	// Guard both anchors. Without this a reworded heading makes indexOf return
+	// -1, slice reads to the end of the file, and the check harvests every
+	// backticked word — including the replacements it is meant to recommend.
+	assert.ok(start !== -1 && end > start, 'could not find the deprecation sentence in the skill');
+
+	const sentence = skill.slice(start, end);
 	const deprecated = (sentence.match(/`([a-z][a-z0-9-]*)`/g) ?? []).map((t) => t.slice(1, -1));
-	assert.ok(deprecated.length > 0, 'could not read the deprecation sentence from the skill');
+	assert.ok(deprecated.length > 0, 'the deprecation sentence named nothing');
 
 	const unmentioned = deprecated.filter((name) => !houseRules.includes(`"${name}"`));
 	assert.deepEqual(unmentioned, [], `deprecated by Shotstack but not flagged in our rules: ${unmentioned.join(' ')}`);

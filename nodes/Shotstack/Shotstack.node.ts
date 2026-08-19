@@ -1,5 +1,6 @@
 import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 import { renderDescription } from './resources/render';
+import { USER_AGENT } from './userAgent';
 import { referenceDescription } from './resources/reference';
 import { getTemplates } from './listSearch/getTemplates';
 
@@ -32,9 +33,7 @@ export class Shotstack implements INodeType {
 			headers: {
 				Accept: 'application/json',
 				'Content-Type': 'application/json',
-				// Names this node in Shotstack's render log. A plain HTTP Request node
-				// reports a bare "n8n", so keep this string different from that.
-				'User-Agent': 'shotstack-n8n-node/0.1.0',
+				'User-Agent': USER_AGENT,
 			},
 		},
 		properties: [

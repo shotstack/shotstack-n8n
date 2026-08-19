@@ -4,3 +4,6 @@ node_modules
 # Scratch files. Nothing internal should reach a public repo.
 *.local.json
 rqs.json
+
+# release-it regenerates this; the real changelog is CHANGELOG.md
+.auto-changelog.md
