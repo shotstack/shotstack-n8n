@@ -1,5 +1,7 @@
 import type {
-	IAuthenticateGeneric,
+	IAuthenticate,
+	ICredentialDataDecryptedObject,
+	IHttpRequestOptions,
 	Icon,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -49,13 +51,29 @@ export class ShotstackApi implements ICredentialType {
 		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			headers: {
-				'x-api-key': '={{$credentials?.apiKey}}',
-			},
-		},
+	/**
+	 * Sends the key to Shotstack and nowhere else.
+	 *
+	 * Download Video fetches from whatever address the previous step produced.
+	 * That is usually cdn.shotstack.io, but a workflow can put any address
+	 * there. A blanket header would hand the user's key to that host.
+	 */
+	authenticate: IAuthenticate = async (
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> => {
+		// Download Video sets baseURL to an empty string on purpose, so the host
+		// lives in url. An empty string is not nullish, so ?? would keep it.
+		const target = requestOptions.baseURL
+			? String(requestOptions.baseURL)
+			: String(requestOptions.url ?? '');
+		if (/^https:\/\/([a-z0-9-]+\.)*shotstack\.io(\/|$)/i.test(target)) {
+			requestOptions.headers = {
+				...requestOptions.headers,
+				'x-api-key': String(credentials.apiKey ?? ''),
+			};
+		}
+		return requestOptions;
 	};
 
 	test: ICredentialTestRequest = {
