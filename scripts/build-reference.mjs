@@ -48,7 +48,14 @@ out.push(line('', S.Output, ['format', 'size', 'resolution', 'aspectRatio', 'fps
 out.push('  size = { "width": int, "height": int }');
 out.push('', 'TRANSITION  { "in": <name>, "out": <name> }');
 out.push(`  names: ${(S.Transition.properties.in.enum || []).join(' ')}`);
-out.push('', readFileSync(new URL('./house-rules.txt', import.meta.url), 'utf8').trim());
+// Normalise line endings. On Windows this file is checked out with CRLF, and
+// the stray carriage returns would both reach the model and make the CI drift
+// check fail on Linux, where the same file has none.
+const CARRIAGE_RETURNS = /\r\n?/g;
+const houseRules = readFileSync(new URL('./house-rules.txt', import.meta.url), 'utf8')
+	.replace(CARRIAGE_RETURNS, '\n')
+	.trim();
+out.push('', houseRules);
 
 const body = out.join('\n');
 const ts = `// GENERATED FILE. Do not edit by hand.

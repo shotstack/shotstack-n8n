@@ -84,6 +84,21 @@ jobs:
       - name: Install dependencies
         run: 'npm ci'
 
+      - name: Run tests
+        # ci.yml triggers on pull_request and push-to-main, so a tag matches
+        # neither. n8n-node release only hooks lint and build. Without these two
+        # steps the release path runs neither guard in this repo.
+        run: 'npm test'
+
+      - name: Check the AI reference is still in step with the spec
+        run: |
+          node scripts/build-reference.mjs
+          if ! git diff --quiet -- nodes/Shotstack/reference/recipeReference.ts; then
+            echo "recipeReference.ts is out of step with scripts/shotstack-openapi.json."
+            echo "Run: node scripts/build-reference.mjs   then commit the result."
+            exit 1
+          fi
+
       - name: Release
         # Publishes to npm with a provenance attestation (requires id-token: write above).
         # Lint and build run automatically as part of the release process.

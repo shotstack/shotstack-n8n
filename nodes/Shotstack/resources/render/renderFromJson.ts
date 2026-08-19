@@ -1,26 +1,66 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INodeProperties,
+	PreSendAction,
+} from 'n8n-workflow';
 
 const showOnly = {
 	resource: ['render'],
 	operation: ['renderFromJson'],
 };
 
-const SAMPLE_EDIT = `{
-  "timeline": {
-    "tracks": [
-      {
-        "clips": [
-          {
-            "asset": { "type": "text", "text": "Hello from n8n" },
-            "start": 0,
-            "length": 4
-          }
-        ]
-      }
-    ]
-  },
-  "output": { "format": "mp4", "size": { "width": 1080, "height": 1920 } }
-}`;
+const SAMPLE_EDIT =
+	'{"timeline":{"tracks":[{"clips":[{"asset":{"type":"text","text":"Hello"},"start":0,"length":4}]}]},"output":{"format":"mp4","size":{"width":1080,"height":1920}}}';
+
+/**
+ * Builds the request body from the recipe and the callback.
+ *
+ * Both run here rather than in routing expressions, for two reasons.
+ *
+ * A bad recipe must fail this item, not the whole node. An expression that
+ * throws does so while n8n is still resolving parameters, before any request
+ * promise exists, so Continue On Fail never sees it and renders already sent
+ * for earlier items are orphaned and billed.
+ *
+ * A blank Callback URL must leave the recipe alone. Routing a blank value
+ * writes callback: undefined over one the user set inside their own recipe,
+ * and JSON.stringify then drops the key, so their webhook never fires.
+ */
+const buildRenderBody: PreSendAction = async function (
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+) {
+	const raw = this.getNodeParameter('edit', '') as string | IDataObject;
+
+	let edit: IDataObject;
+	if (typeof raw === 'string') {
+		const text = raw.trim();
+		if (!text) {
+			throw new NodeOperationError(this.getNode(), 'The Edit field is empty', {
+				description:
+					'Paste a Shotstack recipe, or use Render From Template if you have one saved.',
+				itemIndex: this.getItemIndex(),
+			});
+		}
+		try {
+			edit = JSON.parse(text) as IDataObject;
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), 'The Edit field is not valid JSON', {
+				description: (error as Error).message,
+				itemIndex: this.getItemIndex(),
+			});
+		}
+	} else {
+		edit = (raw ?? {}) as IDataObject;
+	}
+
+	const callback = String(this.getNodeParameter('callback', '') ?? '').trim();
+	requestOptions.body = callback ? { ...edit, callback } : edit;
+	return requestOptions;
+};
 
 export const renderFromJsonDescription: INodeProperties[] = [
 	{
@@ -28,18 +68,16 @@ export const renderFromJsonDescription: INodeProperties[] = [
 		name: 'edit',
 		type: 'json',
 		required: true,
-		default: SAMPLE_EDIT,
+		// Empty on purpose. A working sample here would render, and bill, on any
+		// accidental execute — including a tool call from an agent that omits it.
+		default: '',
+		placeholder: SAMPLE_EDIT,
 		typeOptions: { rows: 12 },
 		displayOptions: { show: showOnly },
 		description:
-			'The full Shotstack edit: a timeline of tracks and clips, plus output settings. Paste one from the docs or Studio. Keep this field in fixed mode — in expression mode n8n evaluates Shotstack merge placeholders such as {{ HEADLINE }} and replaces them with nothing.',
+			'The full Shotstack recipe: a timeline of tracks and clips, plus output settings. Paste one from the docs or Studio, or use the Reference action to get one written. Keep this field in fixed mode — in expression mode n8n evaluates Shotstack merge placeholders such as {{ HEADLINE }} and replaces them with nothing.',
 		routing: {
-			request: {
-				// parseJson reports a bad edit as a real n8n error. A bare JSON.parse
-				// throws a SyntaxError that the expression engine swallows, which sends
-				// the request with no edit at all and an opaque API error back.
-				body: '={{ typeof $value === "string" ? $value.parseJson() : $value }}',
-			},
+			send: { preSend: [buildRenderBody] },
 		},
 	},
 	{
@@ -49,16 +87,7 @@ export const renderFromJsonDescription: INodeProperties[] = [
 		default: '',
 		placeholder: 'https://your-n8n/webhook/shotstack-done',
 		displayOptions: { show: showOnly },
-		description: 'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling. Leave blank if your edit already sets its own callback.',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'callback',
-				// Send undefined rather than '' when blank. Otherwise this merges an
-				// empty string over a callback the user set inside their own edit,
-				// silently breaking their webhook.
-				value: '={{ $value || undefined }}',
-			},
-		},
+		description:
+			'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling. Leave blank to keep whatever callback the recipe already sets.',
 	},
 ];

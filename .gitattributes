@@ -1,0 +1,5 @@
+# Keep text files LF everywhere, so the generated reference is byte-identical
+# on Windows and on CI. Without this the drift check fails on Linux.
+* text=auto eol=lf
+*.png binary
+*.svg text eol=lf
