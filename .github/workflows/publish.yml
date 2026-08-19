@@ -1,64 +1,13 @@
-# Publishes this n8n community node package to npm on every version tag push.
+# Publishes to npm when a version tag is pushed.
 #
-# Starting May 1 2026, n8n requires all community nodes to be published via
-# GitHub Actions with npm provenance statements. This workflow satisfies that
-# requirement. Provenance lets anyone cryptographically verify that a package
-# was built by this exact workflow, from this exact repository and commit.
-#
-# ─── PREREQUISITES ─────────────────────────────────────────────────────────────
-#
-# @n8n/node-cli ≥ 0.23.0 is required. Earlier versions do not support the
-# provenance flag passed by `npm run release` in CI, and the publish step will
-# fail. Check the version installed in this project with:
-#
-#   npm list @n8n/node-cli
-#
-# To upgrade, add @n8n/node-cli@latest as a dev dependency using your package manager.
-#
-# ─── ONE-TIME SETUP ────────────────────────────────────────────────────────────
-#
-# Option A — OIDC Trusted Publishing (recommended, no long-lived secrets):
-#   1. Log in to npmjs.com and open your package's settings.
-#   2. Under "Publish access" → "Trusted Publishers", click "Add a publisher".
-#   3. Select GitHub Actions and fill in:
-#        Repository owner: <your-github-username-or-org>
-#        Repository name:  <your-repo-name>
-#        Workflow name:    publish.yml
-#        Environment:      (leave blank unless you use GitHub Environments)
-#   4. Leave the NPM_TOKEN secret unset in this repository. GitHub's OIDC
-#      token is used instead — no secret ever touches your repo settings.
-#
-# Option B — npm Automation Token (fallback):
-#   1. On npmjs.com: Access Tokens → Generate New Token → Granular Access Token.
-#      Scope it to this package with "Read and write" publish permission.
-#   2. In GitHub: Settings → Secrets and variables → Actions → New secret.
-#      Name it NPM_TOKEN and paste the token value.
-#
-# Both options work with --provenance. Provenance is signed by GitHub's OIDC
-# infrastructure regardless of how npm authentication is handled.
-#
-# ─── TAG CONVENTION ────────────────────────────────────────────────────────────
-#
-# This workflow triggers on tags matching "*.*.*" (e.g. 0.2.0).
-# If you prefer tags with a "v" prefix (e.g. v0.2.0), change the filter to:
-#   tags: ['v*.*.*']
-#
-# ─── RELEASE PROCESS ───────────────────────────────────────────────────────────
-#
-# Run the following command locally to start an interactive release:
-#
-#   npm run release
-#
-# This will lint, build, prompt for a version bump, update the changelog,
-# commit, tag, and push — which triggers this workflow to publish to npm.
+# n8n requires community nodes to be published from CI with a provenance
+# signature. What must be true before the first release is in RELEASING.md.
 
 name: Publish
 
 on:
   push:
     tags:
-      # Matches 0.1.0, 1.2.3, 2.0.0-rc.1, etc.
-      # See "TAG CONVENTION" above if you prefer tags with a "v" prefix.
       - '*.*.*'
 
 jobs:
@@ -67,24 +16,23 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      # Required to mint an OIDC token for npm provenance attestation.
+      # Mints the OIDC token npm needs to sign the provenance statement.
       id-token: write
-      # Scoped down from the default (write) for least-privilege publishing.
       contents: read
 
     steps:
       - uses: actions/checkout@v4
         with:
-          # Needed by the next step, which compares this tag against main.
+          # The next step walks history, so it needs the whole thing.
           fetch-depth: 0
 
       - name: Refuse a tag that is not on main
-        # The tag filter above accepts a tag on any branch, so without this a
-        # tag on a scratch branch publishes to npm under the @shotstack name.
+        # The tag filter accepts a tag on any branch, so without this a tag on a
+        # scratch branch publishes under the @shotstack name.
         #
-        # Do not fetch here. fetch-depth: 0 already gave a complete origin/main,
-        # and a --depth=1 fetch would shallow it, so merge-base could no longer
-        # walk the ancestry and every tag but main's exact tip would be refused.
+        # Do not add a fetch here. A --depth=1 fetch would shallow the clone that
+        # fetch-depth: 0 just made, and merge-base would then refuse every tag
+        # except main's exact tip.
         run: |
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "Tag $GITHUB_REF_NAME points at a commit that is not on main."
@@ -102,9 +50,8 @@ jobs:
         run: 'npm ci'
 
       - name: Run tests
-        # ci.yml triggers on pull_request and push-to-main, so a tag matches
-        # neither. n8n-node release only hooks lint and build. Without these two
-        # steps the release path runs neither guard in this repo.
+        # A tag triggers neither ci.yml nor the release command's own hooks, so
+        # without this step the release path runs no tests at all.
         run: 'npm test'
 
       - name: Check the AI reference is still in step with the spec
@@ -117,10 +64,8 @@ jobs:
           fi
 
       - name: Send a prerelease to the "next" tag, not "latest"
-        # `n8n-node release` runs a bare `npm publish`, and npm always writes to
-        # the latest tag unless told otherwise — it does not read the version.
-        # Without this, tagging 0.2.0-rc.1 to try something serves that RC to
-        # every install, and only the scope owner can undo it.
+        # npm publishes to latest unless told otherwise. It does not read the
+        # version, so an rc tag would otherwise be served to every install.
         run: |
           case "$GITHUB_REF_NAME" in
             *-*) echo "npm_config_tag=next" >> "$GITHUB_ENV"
@@ -129,23 +74,14 @@ jobs:
           esac
 
       - name: Release
-        # Publishes to npm with a provenance attestation (requires id-token: write above).
-        # Lint and build run automatically as part of the release process.
-        #
-        # Option A (OIDC): leave NPM_TOKEN unset — the token step is skipped and
-        #   npm uses the OIDC exchange instead.
-        # Option B (token): set NPM_TOKEN in repo secrets — it is written to
-        #   .npmrc here before publishing.
+        # With no NPM_TOKEN set, npm authenticates through OIDC instead.
         run: |
-          # An `if` block, not `[ -n ... ] && ...`. GitHub runs this with bash -e,
-          # so the && form exits 1 when NPM_TOKEN is unset and kills the step —
-          # which is precisely the OIDC path the notes above recommend.
+          # An `if`, not `[ -n ... ] && ...`. GitHub runs this with bash -e, so
+          # the && form exits 1 when NPM_TOKEN is unset and kills the step.
           if [ -n "$NPM_TOKEN" ]; then
             npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
           fi
           npm run release
         env:
-          # NOTE: the n8n scaffold (@n8n/node-cli 0.43.4) shipped this line as a
-          # bare "$", which silently breaks Option B — the literal string passes
-          # the -n test above and writes a junk auth token. Fixed here.
+          # The n8n scaffold ships this as a bare "$", which writes a junk token.
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
