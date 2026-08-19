@@ -35,3 +35,19 @@ jobs:
 
       - name: Run build
         run: 'npm run build'
+
+      - name: Run tests
+        run: 'npm test'
+
+      - name: Check the AI reference is still in step with the spec
+        # recipeReference.ts is generated. If someone edits it by hand, or
+        # updates the spec without regenerating, the node would teach an AI a
+        # version of the API that no longer exists. Rebuild and compare.
+        run: |
+          node scripts/build-reference.mjs
+          if ! git diff --quiet -- nodes/Shotstack/reference/recipeReference.ts; then
+            echo "recipeReference.ts is out of step with scripts/shotstack-openapi.json."
+            echo "Run: node scripts/build-reference.mjs   then commit the result."
+            git diff --stat -- nodes/Shotstack/reference/recipeReference.ts
+            exit 1
+          fi
