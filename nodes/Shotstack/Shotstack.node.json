@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-shotstack.shotstack",
+	"node": "@shotstack/n8n-nodes-shotstack.shotstack",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Marketing & Content", "Utility"],

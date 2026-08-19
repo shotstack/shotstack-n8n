@@ -19,7 +19,9 @@ First version. Published as `@shotstack/n8n-nodes-shotstack`.
   ID and merge fields. The template can be picked from a searchable list of the
   templates in the account, or entered by ID.
 - **Render → Get** — `GET /render/{id}`, with an Include Submitted Edit toggle
-  and a Simplify toggle.
+  and a Simplify toggle. **Wait For The Render To Finish** keeps checking until
+  the render is done, which replaces the usual Wait node and Switch loop. A
+  failed render stops the step with Shotstack's reason instead of looping.
 - **Render → Get Hosted Asset** — `GET /assets/render/{id}` on the Serve API,
   for the permanent CDN URL. The URL returned by **Get** is a direct storage
   link that expires after 24 hours. This operation waits up to two minutes for

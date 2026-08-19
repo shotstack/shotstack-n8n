@@ -122,6 +122,8 @@ Checks a render and returns its status.
 | Field | Notes |
 | --- | --- |
 | **Render ID** | The id returned by any render operation. |
+| **Wait For The Render To Finish** | Off by default. On, the step keeps checking until the render is done — see [Waiting for a render](#waiting-for-a-render). |
+| **Give Up After (Minutes)** | Only shown when waiting. 10 by default. |
 | **Include Submitted Edit** | Off by default. Keeps polling responses small. |
 | **Simplify** | On by default. Returns `id`, `status`, `url`, `poster`, `thumbnail`, `duration`, `renderTime` and `error`. Turn it off for the full response. |
 
@@ -185,9 +187,25 @@ unwraps it, so read `{{$json.id}}` rather than `{{$json.response.id}}`.
 ## Waiting for a render
 
 Rendering takes seconds to minutes, so **Render** returns an id, not a video.
-There are two ways to get the finished file. Use the first if you can.
+There are three ways to get the finished file.
 
-### Callback (preferred)
+### Wait For The Render To Finish (simplest)
+
+Turn on **Wait For The Render To Finish** in **Render → Get**. The step keeps
+checking until the render is done, then returns it:
+
+```
+Shotstack (Render) → Shotstack (Get, waiting) → Shotstack (Get Hosted Asset) → next step
+```
+
+No Wait node, no Switch, no loop. A failed render stops the step and reports the
+reason Shotstack gave, rather than looping forever.
+
+It holds the n8n execution open while it waits, so use **Give Up After** to bound
+it — 10 minutes by default. For a long queue, or a render using the generative
+assets, prefer the callback below.
+
+### Callback
 
 1. Add a **Webhook** node and copy its URL.
 2. Paste that URL into **Callback URL** on the render operation.
@@ -195,10 +213,10 @@ There are two ways to get the finished file. Use the first if you can.
 Shotstack posts to it when the render finishes, and the workflow continues from
 the Webhook node. Nothing polls and nothing waits.
 
-### Wait loop
+### Wait loop (only if you need one)
 
-Use this when the callback cannot reach you — for example a self-hosted n8n
-behind a home router.
+You should not need this now that **Get** can wait. It is here because some
+workflows want to do other work between checks.
 
 ```
 Shotstack (Render) → Wait (20s) → Shotstack (Get) → Switch on {{$json.status}}

@@ -37,7 +37,7 @@
     "lint:fix": "n8n-node lint --fix",
     "release": "n8n-node release",
     "prepublishOnly": "n8n-node prerelease",
-    "test": "npm run build && node test/credential-host-scope.mjs && node test/house-rules-drift.mjs"
+    "test": "npm run build && node test/package-loads.mjs && node test/credential-host-scope.mjs && node test/house-rules-drift.mjs"
   },
   "files": [
     "dist"
