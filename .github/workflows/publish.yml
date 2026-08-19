@@ -74,6 +74,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Needed by the next step, which compares this tag against main.
+          fetch-depth: 0
+
+      - name: Refuse a tag that is not on main
+        # The tag filter above accepts a tag on any branch, so without this a
+        # tag on a scratch branch publishes to npm under the @shotstack name.
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tag $GITHUB_REF_NAME points at a commit that is not on main."
+            echo "Merge to main first, then tag."
+            exit 1
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

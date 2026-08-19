@@ -1,0 +1,85 @@
+{
+  "timeline": {
+    "background": "#000000",
+    "fonts": [
+      { "src": "https://fonts.gstatic.com/s/anton/v27/1Ptgg87LROyAm0K08i4gS7lu.ttf" }
+    ],
+    "tracks": [
+      {
+        "clips": [
+          {
+            "asset": {
+              "type": "rich-text",
+              "text": "SUMMER SALE",
+              "font": { "family": "1Ptgg87LROyAm0K08i4gS7lu", "size": 118, "color": "#ffffff" },
+              "stroke": { "width": 3, "color": "#000000" },
+              "align": { "horizontal": "center", "vertical": "middle" }
+            },
+            "start": 0,
+            "length": 4,
+            "width": 940,
+            "height": 300,
+            "offset": { "x": 0, "y": 0.06 },
+            "transition": { "in": "fade" }
+          }
+        ]
+      },
+      {
+        "clips": [
+          {
+            "asset": {
+              "type": "rich-text",
+              "text": "SHOP NOW",
+              "font": { "family": "1Ptgg87LROyAm0K08i4gS7lu", "size": 54, "color": "#111111" },
+              "background": { "color": "#ffd400", "borderRadius": 18 },
+              "padding": 34,
+              "align": { "horizontal": "center", "vertical": "middle" }
+            },
+            "start": 1,
+            "length": 3,
+            "width": 880,
+            "height": 160,
+            "offset": { "x": 0, "y": -0.25 },
+            "transition": { "in": "fade" }
+          }
+        ]
+      },
+      {
+        "clips": [
+          {
+            "asset": {
+              "type": "audio",
+              "src": "https://shotstack-assets.s3.amazonaws.com/music/unminus/lit.mp3",
+              "effect": "fadeInFadeOut",
+              "volume": 0.5
+            },
+            "start": 0,
+            "length": "end"
+          }
+        ]
+      },
+      {
+        "clips": [
+          {
+            "asset": {
+              "type": "video",
+              "src": "https://shotstack-assets.s3.amazonaws.com/footage/beach-overhead.mp4",
+              "volume": 0
+            },
+            "start": 0,
+            "length": 4,
+            "fit": "crop",
+            "effect": "zoomInSlow",
+            "filter": "darken"
+          }
+        ]
+      }
+    ]
+  },
+  "output": {
+    "format": "mp4",
+    "size": { "width": 1080, "height": 1920 },
+    "fps": 25,
+    "quality": "high"
+  }
+}

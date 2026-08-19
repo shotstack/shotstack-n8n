@@ -37,7 +37,7 @@
     "lint:fix": "n8n-node lint --fix",
     "release": "n8n-node release",
     "prepublishOnly": "n8n-node prerelease",
-    "test": "npm run build && node test/credential-host-scope.mjs"
+    "test": "npm run build && node test/credential-host-scope.mjs && node test/house-rules-drift.mjs"
   },
   "files": [
     "dist"
@@ -54,6 +54,7 @@
   },
   "devDependencies": {
     "@n8n/node-cli": "*",
+    "@shotstack/cli": "0.8.1",
     "eslint": "9.32.0",
     "prettier": "3.6.2",
     "release-it": "^19.0.4",
