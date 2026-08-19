@@ -98,7 +98,8 @@ export const referenceDescription: INodeProperties[] = [
 			{
 				name: 'Compact',
 				value: 'compact',
-				description: 'About 6,700 characters. Every asset type, every allowed value, and the house rules.',
+				description:
+					'About 13,700 characters. Every asset type with its nested shape, every allowed value, and the house rules.',
 			},
 			{
 				name: 'Full',

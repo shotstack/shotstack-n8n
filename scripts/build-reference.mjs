@@ -11,13 +11,31 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const specPath = process.argv[2] ?? new URL('./shotstack-openapi.json', import.meta.url);
 
 const S = JSON.parse(readFileSync(specPath, 'utf8')).components.schemas;
-const deref = (v) => (v && v.$ref ? S[v.$ref.split('/').pop()] : v);
-const typeOf = (v) => {
+
+// A $ref can name a schema the file does not define. Keep the raw node then,
+// because it often carries the properties inline anyway.
+const deref = (v) => {
+	if (!v?.$ref) return v;
+	return S[v.$ref.split('/').pop()] ?? v;
+};
+
+// Depth 0 prints a nested object's own keys. Deeper than that the reference
+// becomes longer than the model can use.
+const typeOf = (v, depth = 0) => {
 	const d = deref(v) || {};
 	if (d.enum) return d.enum.join('|');
-	if (d.type === 'array') return `${deref(d.items)?.type || 'object'}[]`;
-	return d.type || (v?.$ref ? v.$ref.split('/').pop() : '?');
+	if (d.oneOf) return [...new Set(d.oneOf.map((o) => typeOf(o, depth + 1)))].join('|');
+	if (d.type === 'array') return `${typeOf(d.items, depth + 1)}[]`;
+	if (d.properties) {
+		if (depth > 0) return 'object';
+		const inner = Object.entries(d.properties)
+			.map(([k, p]) => `${k}:${typeOf(p, depth + 1)}`)
+			.join(' ');
+		return `{ ${inner} }`;
+	}
+	return d.type ?? 'object';
 };
+
 const line = (name, schema, keep) => {
 	const req = new Set(schema.required || []);
 	const props = Object.entries(schema.properties || {})
@@ -38,9 +56,11 @@ const out = [
 	'',
 	'ASSET TYPES',
 ];
+// Skip the deprecated types. Listing html and title taught the model to write
+// assets the API no longer wants.
 for (const key of Object.keys(S).filter((k) => /Asset$/.test(k) && k !== 'Asset')) {
 	const t = S[key].properties?.type?.enum?.[0];
-	if (t) out.push(line(`"${t}"`.padEnd(17), S[key]));
+	if (t && !S[key].deprecated) out.push(line(`"${t}"`.padEnd(17), S[key]));
 }
 out.push('', 'OUTPUT');
 out.push(line('', S.Output, ['format', 'size', 'resolution', 'aspectRatio', 'fps', 'quality']));

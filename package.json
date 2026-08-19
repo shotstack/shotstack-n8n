@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-shotstack",
+  "name": "@shotstack/n8n-nodes-shotstack",
   "version": "0.1.0",
   "description": "Render video and images from JSON with the Shotstack API",
   "license": "MIT",
@@ -20,10 +20,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shotstack/n8n-nodes-shotstack.git"
+    "url": "git+https://github.com/shotstack/shotstack-n8n.git"
   },
   "bugs": {
-    "url": "https://github.com/shotstack/n8n-nodes-shotstack/issues"
+    "url": "https://github.com/shotstack/shotstack-n8n/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "n8n-node build",

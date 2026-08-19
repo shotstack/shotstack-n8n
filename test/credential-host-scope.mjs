@@ -6,6 +6,7 @@
 //
 // Runs against dist, which is what npm publishes.
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { ShotstackApi } from '../dist/credentials/ShotstackApi.credentials.js';
 
 const credential = new ShotstackApi();
@@ -42,8 +43,22 @@ for (const [label, options, shouldSend] of cases) {
 	}
 }
 
+// The User-Agent names this node in Shotstack's render log. It carries the
+// version as a literal, so a release that bumps only package.json makes every
+// render report the old one. Fail here instead.
+const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+const node = await readFile(new URL('../dist/nodes/Shotstack/Shotstack.node.js', import.meta.url), 'utf8');
+const agent = node.match(/shotstack-n8n-node\/([\d.]+)/)?.[1];
+try {
+	assert.equal(agent, version);
+	console.log(`  ok    User-Agent reports ${version}`);
+} catch {
+	failed += 1;
+	console.error(`  FAIL  User-Agent says ${agent}, package.json says ${version}`);
+}
+
 if (failed) {
 	console.error(`\n${failed} failing`);
 	process.exit(1);
 }
-console.log(`\n${cases.length} passing`);
+console.log(`\n${cases.length + 1} passing`);

@@ -78,8 +78,21 @@ const attachVideoFile: PostReceiveAction = async function (
 	const fileName = chosenName || nameInUrl || 'video.mp4';
 
 	const contentType = String(response.headers?.['content-type'] ?? '').split(';')[0].trim();
-	const body = response.body as Buffer | string;
-	const buffer = Buffer.isBuffer(body) ? body : Buffer.from(body);
+
+	// Never Buffer.from(string) here. That decodes as utf8 and every byte above
+	// 127 becomes U+FFFD, which writes a corrupt file and reports success.
+	const body = response.body as unknown;
+	let buffer: Buffer;
+	if (Buffer.isBuffer(body)) {
+		buffer = body;
+	} else if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
+		buffer = Buffer.from(body as ArrayBuffer);
+	} else {
+		throw new NodeOperationError(this.getNode(), 'The download did not return a file', {
+			description: `Expected bytes and got ${typeof body}. The URL may point at a web page rather than a video.`,
+			itemIndex: this.getItemIndex(),
+		});
+	}
 
 	const binary = await this.helpers.prepareBinaryData(
 		buffer,

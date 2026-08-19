@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { requireRenderId } from './renderId';
 
 const showOnly = {
 	resource: ['render'],
@@ -19,6 +20,7 @@ export const renderGetDescription: INodeProperties[] = [
 			request: {
 				url: '=/render/{{$value}}',
 			},
+			send: { preSend: [requireRenderId] },
 		},
 	},
 	{
@@ -27,12 +29,12 @@ export const renderGetDescription: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		displayOptions: { show: showOnly },
-		description:
-			'Whether to return the edit that was submitted alongside the status. Off keeps polling responses small. Shotstack is changing this default, so the node always sends it explicitly',
+		description: 'Whether to also return the edit that was submitted. Leave off while polling, so the responses stay small.',
 		routing: {
 			request: {
 				qs: {
-					data: '={{$value}}',
+					// Only when asked. Sending data=false on every poll is noise.
+					data: '={{ $value || undefined }}',
 				},
 			},
 		},

@@ -2,10 +2,13 @@ import { NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	DeclarativeRestApiSettings,
 	IDataObject,
+	IExecuteSingleFunctions,
 	IExecutePaginationFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	PostReceiveAction,
 } from 'n8n-workflow';
+import { isRenderId } from './renderId';
 
 const showOnly = {
 	resource: ['render'],
@@ -17,6 +20,31 @@ const MAX_WAIT_MS = 120000;
 // After this many empty answers, ask the Edit API whether waiting can ever
 // work. A missing or failed render never becomes a hosted file.
 const CHECK_RENDER_AFTER = 3;
+
+const POSTER_EXTENSIONS = /\.(jpg|jpeg|png|webp|bmp|gif)$/i;
+
+/**
+ * Drops the poster and thumbnail, so the next step gets the video.
+ *
+ * One render hosts several files. Without this the workflow runs once per
+ * file, and Download Video saves a JPEG named like a video.
+ */
+const keepMainFile: PostReceiveAction = async function (
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+) {
+	if (!this.getNodeParameter('mainFileOnly', true)) return items;
+
+	const nameOf = (item: INodeExecutionData) => {
+		const json = item.json as IDataObject;
+		const attributes = (json.attributes ?? json) as IDataObject;
+		return String(attributes.filename ?? attributes.url ?? '').split('?')[0];
+	};
+
+	const main = items.filter((item) => !POSTER_EXTENSIONS.test(nameOf(item)));
+	// An image render has no video, so every file looks like a poster.
+	return main.length > 0 ? main : items;
+};
 
 const environmentFrom = (baseURL: string) => (baseURL.includes('/serve/v1') ? 'v1' : 'stage');
 
@@ -114,31 +142,44 @@ const waitForHostedAsset = async function (
 	const baseURL = String(requestData.options.baseURL ?? '');
 	const url = `${baseURL}${String(requestData.options.url ?? '')}`;
 	const environment = environmentFrom(baseURL);
-	const renderId = String(this.getNodeParameter('renderId', '') ?? '');
+	const renderId = String(this.getNodeParameter('renderId', '') ?? '').trim();
+
+	// Checked here, not in a preSend. This hook builds its own requests, so a
+	// preSend would run too late to keep a bad value out of the URL.
+	if (!isRenderId(renderId)) {
+		throw new NodeOperationError(this.getNode(), 'That is not a Shotstack render ID', {
+			description: `A render ID looks like 4a37ef85-b4d1-4b4a-90be-6515290c5091. Got "${renderId}". The render actions return it as "id".`,
+			itemIndex: this.getItemIndex(),
+		});
+	}
 
 	const attempts = Math.ceil(MAX_WAIT_MS / POLL_GAP_MS);
 
 	for (let attempt = 0; attempt < attempts; attempt++) {
-		const response = (await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			'shotstackApi',
-			{
+		let response: { statusCode: number; body: IDataObject } | undefined;
+		try {
+			response = (await this.helpers.httpRequestWithAuthentication.call(this, 'shotstackApi', {
 				method: 'GET',
 				url,
 				json: true,
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,
-			},
-		)) as { statusCode: number; body: IDataObject };
+			})) as { statusCode: number; body: IDataObject };
+		} catch {
+			// A dropped connection is not an answer. Keep waiting.
+		}
 
-		// A rejected key never becomes a good key.
-		if (response.statusCode === 401 || response.statusCode === 403) {
-			break;
+		if (response?.statusCode === 401 || response?.statusCode === 403) {
+			throw new NodeOperationError(this.getNode(), 'Shotstack refused the API key', {
+				description:
+					'Check the key, and check that the credential environment matches the key. A sandbox key cannot read a production render.',
+				itemIndex: this.getItemIndex(),
+			});
 		}
 
 		// Waiting only helps while the render is on its way. Check once, early, so
 		// a wrong ID or a failed render reports in ten seconds, not two minutes.
-		if (attempt === CHECK_RENDER_AFTER && response.statusCode !== 200) {
+		if (attempt === CHECK_RENDER_AFTER && response?.statusCode !== 200) {
 			const check = await readRenderStatus.call(this, environment, renderId);
 			// Stop early only on a definite answer.
 			if (check.known && (check.status === undefined || check.status === 'failed')) {
@@ -146,25 +187,28 @@ const waitForHostedAsset = async function (
 			}
 		}
 
-		if (response.statusCode === 200) {
-			const first = ((response.body?.data ?? []) as IDataObject[])[0];
-			const assetStatus = ((first?.attributes ?? {}) as IDataObject).status;
-			if (assetStatus === 'ready') {
-				// Run the real request so the output goes through Simplify.
-				return await this.makeRoutingRequest(requestData);
-			}
-			if (assetStatus === 'failed') {
+		if (response?.statusCode === 200) {
+			// A render can host more than one file: the video, and a poster or
+			// thumbnail. Wait for all of them, or the next step can be handed a
+			// poster image while the video is still uploading.
+			const assets = (response.body?.data ?? []) as IDataObject[];
+			const states = assets.map((a) => (a.attributes as IDataObject)?.status);
+
+			if (states.some((s) => s === 'failed')) {
 				throw new NodeOperationError(this.getNode(), 'Shotstack failed to publish the file', {
 					description: 'The render worked. Hosting did not. Report this render ID to Shotstack.',
 					itemIndex: this.getItemIndex(),
 				});
+			}
+			if (states.length > 0 && states.every((s) => s === 'ready')) {
+				// Run the real request so the output goes through Simplify.
+				return await this.makeRoutingRequest(requestData);
 			}
 		}
 
 		await sleep(POLL_GAP_MS);
 	}
 
-	// Out of patience, or the key was refused. Either way, say why.
 	const check = await readRenderStatus.call(this, environment, renderId);
 	return describeMissingAsset.call(this, check.known, check.status, check.error, renderId);
 };
@@ -193,6 +237,18 @@ export const renderGetAssetsDescription: INodeProperties[] = [
 			operations: {
 				pagination: waitForHostedAsset,
 			},
+		},
+	},
+	{
+		displayName: 'Main File Only',
+		name: 'mainFileOnly',
+		type: 'boolean',
+		default: true,
+		displayOptions: { show: showOnly },
+		description:
+			'Whether to return only the rendered video. A render also hosts a poster and a thumbnail, and those are separate files. Turn this off to get all of them, one item each',
+		routing: {
+			output: { postReceive: [keepMainFile] },
 		},
 	},
 	{

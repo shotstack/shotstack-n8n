@@ -3,6 +3,7 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Marketing & Content", "Utility"],
+	"alias": ["video", "render", "edit", "mp4", "reel", "short", "caption", "subtitle", "avatar"],
 	"resources": {
 		"credentialDocumentation": [
 			{

@@ -1,4 +1,4 @@
-# n8n-nodes-shotstack
+# @shotstack/n8n-nodes-shotstack
 
 Render video and images from JSON, inside n8n.
 
@@ -14,17 +14,18 @@ workflow automation platform.
 
 ## Installation
 
-### n8n Cloud
-
-Search for **Shotstack** in the nodes panel and select **Install**. Verified
-community nodes install without leaving the editor.
-
 ### Self-hosted
 
 1. Go to **Settings → Community Nodes**.
 2. Select **Install**.
-3. Enter `n8n-nodes-shotstack`.
+3. Enter `@shotstack/n8n-nodes-shotstack`.
 4. Agree to the risks and select **Install**.
+
+### n8n Cloud
+
+Not yet. Cloud only installs nodes n8n has **verified**, which is a separate
+review that starts after a package is on npm. Until that review passes, this
+node is self-hosted only.
 
 ## Credentials
 
@@ -54,13 +55,21 @@ this before asking an AI to build a video.**
 | **Detail** | `Compact` (default) or `Full`. See below. |
 | **Include Templates** | On by default. Adds this account's templates, so an AI can pick one instead of writing a recipe from nothing. |
 
-Returns `reference`, a single string of about 6,700 characters holding every
-asset type, every allowed value, and the rules that decide whether a render
-looks good rather than merely succeeds.
+Returns `reference`, a single string of about 13,700 characters holding every
+asset type with its nested shape, every allowed value, and the rules that decide
+whether a render looks good rather than merely succeeds.
 
 The API half is generated from Shotstack's OpenAPI file by
 `scripts/build-reference.mjs`, so it cannot drift. The house rules beside it are
-ours.
+in `scripts/house-rules.txt` and follow Shotstack's own agent skill.
+
+To check a recipe before you render it, without an API key and without spending
+credits:
+
+```bash
+npm install -g @shotstack/cli
+shotstack validate recipe.json
+```
 
 **Detail: Full** also fetches
 [Shotstack's guide for language models](https://shotstack.io/docs/guide/llms-full.txt),
@@ -130,6 +139,7 @@ Returns the permanent CDN URL for a finished render.
 | Field | Notes |
 | --- | --- |
 | **Render ID** | The id returned by any render operation. |
+| **Main File Only** | On by default. A render hosts the video **and** a poster and a thumbnail, as separate files. Off returns all of them, one item each. |
 | **Simplify** | On by default. Returns `id`, `renderId`, `url`, `filename`, `filesize` and `status`. |
 
 Use this for any URL you intend to store, email, publish or hand to another
@@ -156,6 +166,16 @@ email, upload it to Drive or push it anywhere that needs the actual bytes.
 
 Most posting nodes accept a URL and do not need this. Use it when the next step
 needs the file itself.
+
+Two limits worth knowing:
+
+- **The whole file is held in memory** while the workflow runs, the same way
+  n8n's own HTTP Request node handles binary data. A long 4K render can be
+  hundreds of megabytes. On a small n8n instance, pass the URL on instead.
+- **It fetches whatever URL you give it**, including one on your own network.
+  That is deliberate — it is how you download a render from private storage —
+  but it means the field should come from a Shotstack step, not from untrusted
+  input. Your API key is never sent anywhere except `api.shotstack.io`.
 
 ### Output shape
 
