@@ -1,13 +1,10 @@
-// The credential must attach the API key to the Shotstack API and nowhere else.
-//
-// Download Video fetches whatever address the previous step produced. A
-// workflow can put any address there, so a blanket header would hand the
-// user's key to a stranger. Only api.shotstack.io authenticates anything; the
-// CDN serves public files.
+// The credential must send the API key to api.shotstack.io and nowhere else.
+// Download Video fetches whatever address the previous step produced, so a
+// blanket header would hand the user's key to a stranger.
 //
 //   npm test
 //
-// Runs against the built output, which is what npm publishes.
+// Runs against dist, which is what npm publishes.
 import assert from 'node:assert/strict';
 import { ShotstackApi } from '../dist/credentials/ShotstackApi.credentials.js';
 

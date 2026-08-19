@@ -18,10 +18,8 @@ const showOnly = {
 /**
  * Stops the request when there is no URL to fetch.
  *
- * Without this the empty value reaches the HTTP client, which reports
- * "Invalid URL". That blames this step for a problem that happened earlier —
- * usually a render that failed or has not finished. The incoming item already
- * carries the real reason, so report that instead.
+ * An empty value reaches the HTTP client as "Invalid URL". That blames this
+ * step for an earlier failure. The incoming item holds the real reason.
  */
 const explainMissingUrl: PreSendAction = async function (
 	this: IExecuteSingleFunctions,
@@ -67,9 +65,7 @@ const explainMissingUrl: PreSendAction = async function (
 /**
  * Turns the downloaded bytes into an n8n binary file.
  *
- * The built-in binaryData action cannot set a file name or a media type, so
- * every download arrived unnamed. This names the file, falling back to the
- * name in the URL, and keeps the media type the server sent.
+ * The built-in binaryData action cannot set a file name or a media type.
  */
 const attachVideoFile: PostReceiveAction = async function (
 	this: IExecuteSingleFunctions,
@@ -91,9 +87,8 @@ const attachVideoFile: PostReceiveAction = async function (
 		contentType || undefined,
 	);
 
-	// The body is the video itself, so it makes a poor json payload. Carry the
-	// incoming fields through instead. A later step can then name the file with
-	// {{ $json.id }} rather than reaching back to an earlier node by name.
+	// The body is the video, so it makes a poor json payload. Carry the incoming
+	// fields through instead, so a later step can read {{ $json.id }}.
 	const incoming = (this.getInputData()?.json ?? {}) as IDataObject;
 	return items.map(() => ({ json: incoming, binary: { data: binary } }));
 };
@@ -114,8 +109,7 @@ export const renderDownloadDescription: INodeProperties[] = [
 				preSend: [explainMissingUrl],
 			},
 			request: {
-				// The file is fetched from wherever it is hosted, not from the Edit
-				// API, so the node's base URL does not apply here.
+				// The file is hosted elsewhere, so the node baseURL does not apply.
 				baseURL: '',
 				url: '={{ $value }}',
 				method: 'GET',

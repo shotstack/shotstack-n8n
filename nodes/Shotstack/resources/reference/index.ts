@@ -11,21 +11,15 @@ const showOnly = {
 	resource: ['reference'],
 };
 
-/**
- * Hands back everything a language model needs to write a working recipe.
- *
- * The API half is generated from Shotstack's OpenAPI file, so it cannot drift.
- * The house rules are ours, and they are the part that decides whether the
- * video looks good rather than merely renders.
- *
- * The call to /templates is not wasted: it proves the key works and it tells
- * the model which templates this account can already render.
- */
-// Shotstack maintains a plain-text copy of its whole guide for language
-// models. It carries worked examples the generated reference cannot: prose,
-// context, and 213 code blocks.
+// Shotstack's whole guide as plain text, written for language models.
 const FULL_DOCS_URL = 'https://shotstack.io/docs/guide/llms-full.txt';
 
+/**
+ * Builds the answer a language model needs to write a working recipe.
+ *
+ * The request behind it is a real call to /templates. That proves the key
+ * works, and it names the templates this account can already render.
+ */
 const buildReference = async function (
 	this: IExecuteSingleFunctions,
 	_items: INodeExecutionData[],
@@ -45,8 +39,7 @@ const buildReference = async function (
 
 	if (detail === 'full') {
 		try {
-			// Shotstack's own guide. Fetched rather than embedded so it stays
-			// current, and left out of the compact answer because it is large.
+			// Fetched, not embedded, so it stays current.
 			const docs = (await this.helpers.httpRequest({
 				method: 'GET',
 				url: FULL_DOCS_URL,
@@ -55,8 +48,7 @@ const buildReference = async function (
 			json.documentation = docs;
 			json.documentationChars = String(docs).length;
 		} catch {
-			// The reference alone is still useful. Say what is missing rather
-			// than fail the whole step.
+			// The reference alone is still useful. Report the gap, do not fail.
 			json.documentation = '';
 			json.documentationError = `Could not reach ${FULL_DOCS_URL}. The compact reference above is still complete for asset types and allowed values.`;
 		}

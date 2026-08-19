@@ -137,6 +137,13 @@ system. The URL looks like `https://cdn.shotstack.io/...` and does not expire.
 
 Call it once the render reports `done`.
 
+**A finished render is not yet a published file.** Shotstack renders and then
+publishes, as two separate steps, and until the second one finishes the Serve
+API answers 404. The gap is not a fixed length — one measurement was 7 seconds,
+another was over 23 — so no Wait node can be set to a number that always works.
+This operation waits for you, up to two minutes, and reports the real cause if
+the file never appears. Add no Wait after the render finishes.
+
 ### Render → Download Video
 
 Fetches the finished video as a **file**, so the next node can attach it to an

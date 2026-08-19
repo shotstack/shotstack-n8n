@@ -18,13 +18,9 @@ const MAX_WAIT_MS = 120000;
 // work. A missing or failed render never becomes a hosted file.
 const CHECK_RENDER_AFTER = 3;
 
-/** Reads "stage" or "v1" back out of the resolved Serve API address. */
 const environmentFrom = (baseURL: string) => (baseURL.includes('/serve/v1') ? 'v1' : 'stage');
 
-/**
- * Asks the Edit API why there is still no hosted file, so the node can report
- * the real cause instead of a bare 404.
- */
+/** Asks the Edit API why there is no hosted file, so the node can name a cause. */
 async function readRenderStatus(
 	this: IExecutePaginationFunctions,
 	environment: string,
@@ -60,8 +56,8 @@ async function readRenderStatus(
 		// Fall through. A failed check is not proof of anything.
 	}
 
-	// A rate limit, a timeout or an outage all land here. Saying "no such
-	// render" on this evidence would be a lie, so say nothing and keep waiting.
+	// A rate limit, a timeout or an outage all land here. known: false keeps the
+	// caller waiting, so a hiccup never reads as a missing render.
 	return { known: false };
 }
 
@@ -107,11 +103,9 @@ function describeMissingAsset(
 /**
  * Waits for the hosted file to appear.
  *
- * Shotstack finishes a render and publishes the file as two separate steps. In
- * the gap between them the Serve API answers 404. The gap is not fixed: one
- * measurement was 7 seconds, another was over 23. A Wait node cannot be set to
- * a number that always works, so the node waits here instead. The user
- * configures nothing.
+ * A finished render is not yet a published file. Until Shotstack publishes it
+ * the Serve API answers 404, and that gap is not a fixed length. So the node
+ * waits here rather than ask the user to guess a Wait. See the README.
  */
 const waitForHostedAsset = async function (
 	this: IExecutePaginationFunctions,
@@ -142,13 +136,11 @@ const waitForHostedAsset = async function (
 			break;
 		}
 
-		// Waiting only helps while the render is on its way. Check once, early,
-		// so a wrong ID or a failed render reports in ten seconds, not two
-		// minutes.
+		// Waiting only helps while the render is on its way. Check once, early, so
+		// a wrong ID or a failed render reports in ten seconds, not two minutes.
 		if (attempt === CHECK_RENDER_AFTER && response.statusCode !== 200) {
 			const check = await readRenderStatus.call(this, environment, renderId);
-			// Only stop early on a definite answer. An unanswered check keeps
-			// the loop running, so a hiccup never reads as a missing render.
+			// Stop early only on a definite answer.
 			if (check.known && (check.status === undefined || check.status === 'failed')) {
 				return describeMissingAsset.call(this, true, check.status, check.error, renderId);
 			}
@@ -190,13 +182,12 @@ export const renderGetAssetsDescription: INodeProperties[] = [
 			'The ID returned when the render was submitted. This step waits up to two minutes for Shotstack to publish the file, so no extra Wait is needed after the render finishes.',
 		routing: {
 			request: {
-				// The hosted asset lives behind the Serve API, which sits on a
-				// different base path from the Edit API, so override baseURL here.
+				// The Serve API, not the Edit API, so override the node baseURL.
 				baseURL: '=https://api.shotstack.io/serve/{{$credentials.environment}}',
 				url: '=/assets/render/{{$value}}',
 			},
 			send: {
-				// Turns on the wait loop below.
+				// Not pagination. This runs waitForHostedAsset above.
 				paginate: true,
 			},
 			operations: {

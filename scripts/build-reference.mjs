@@ -1,12 +1,11 @@
-// Regenerates nodes/Shotstack/reference/recipeReference.ts from Shotstack's
-// OpenAPI file, so the reference the node hands an AI can never drift from the
-// real API.
+// Writes nodes/Shotstack/reference/recipeReference.ts from Shotstack's OpenAPI
+// file, so the reference the node hands an AI cannot drift from the real API.
 //
 //   node scripts/build-reference.mjs [path-to-openapi.json]
 //
-// Shotstack publishes no stable public address for the spec, so a copy lives
-// beside this script and is used by default. Replace that copy when the API
-// changes. The house rules next to it are ours, not the API's.
+// Shotstack publishes no stable address for the spec, so a copy sits beside
+// this script and is the default. Replace that copy when the API changes. The
+// house rules beside it are ours, not the API's.
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const specPath = process.argv[2] ?? new URL('./shotstack-openapi.json', import.meta.url);
@@ -48,9 +47,8 @@ out.push(line('', S.Output, ['format', 'size', 'resolution', 'aspectRatio', 'fps
 out.push('  size = { "width": int, "height": int }');
 out.push('', 'TRANSITION  { "in": <name>, "out": <name> }');
 out.push(`  names: ${(S.Transition.properties.in.enum || []).join(' ')}`);
-// Normalise line endings. On Windows this file is checked out with CRLF, and
-// the stray carriage returns would both reach the model and make the CI drift
-// check fail on Linux, where the same file has none.
+// Normalise the line endings. Windows checks this file out with CRLF, so the
+// carriage returns would reach the model and fail the CI drift check on Linux.
 const CARRIAGE_RETURNS = /\r\n?/g;
 const houseRules = readFileSync(new URL('./house-rules.txt', import.meta.url), 'utf8')
 	.replace(CARRIAGE_RETURNS, '\n')

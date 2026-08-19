@@ -15,17 +15,14 @@
 		"preserveConstEnums": true,
 		"esModuleInterop": true,
 		"resolveJsonModule": true,
-		// No incremental build. The cache used to live in dist and was the largest
-		// file in the published package; moving it out meant deleting dist no
-		// longer invalidated it, so a clean build emitted nothing. A full build
-		// takes about two seconds, so the cache was never worth either problem.
+		// Keep incremental builds off. The cache outlives a deleted dist, so a
+		// clean build then emits nothing.
 		"declaration": true,
 		"sourceMap": true,
 		"skipLibCheck": true,
 		"outDir": "./dist/"
 	},
-	// package.json is deliberately absent. Including it emitted a second copy at
-	// dist/package.json whose n8n paths are wrong from that location, and no
-	// source file imports it.
+	// Do not add package.json here. It emits a second copy at dist/package.json
+	// whose n8n paths are wrong from that folder.
 	"include": ["credentials/**/*", "nodes/**/*", "nodes/**/*.json"]
 }

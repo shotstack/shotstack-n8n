@@ -18,16 +18,10 @@ const SAMPLE_EDIT =
 /**
  * Builds the request body from the recipe and the callback.
  *
- * Both run here rather than in routing expressions, for two reasons.
- *
- * A bad recipe must fail this item, not the whole node. An expression that
- * throws does so while n8n is still resolving parameters, before any request
- * promise exists, so Continue On Fail never sees it and renders already sent
- * for earlier items are orphaned and billed.
- *
- * A blank Callback URL must leave the recipe alone. Routing a blank value
- * writes callback: undefined over one the user set inside their own recipe,
- * and JSON.stringify then drops the key, so their webhook never fires.
+ * Keep this out of a routing expression. An expression that throws fails the
+ * whole node rather than the item, so Continue On Fail never sees it and
+ * earlier renders are billed with no output. A routed blank callback also
+ * overwrites one the user set inside the recipe, so their webhook never fires.
  */
 const buildRenderBody: PreSendAction = async function (
 	this: IExecuteSingleFunctions,
@@ -68,8 +62,8 @@ export const renderFromJsonDescription: INodeProperties[] = [
 		name: 'edit',
 		type: 'json',
 		required: true,
-		// Empty on purpose. A working sample here would render, and bill, on any
-		// accidental execute — including a tool call from an agent that omits it.
+		// Empty on purpose. A sample here would render, and bill, on an accidental
+		// execute, including a tool call from an agent that omits the field.
 		default: '',
 		placeholder: SAMPLE_EDIT,
 		typeOptions: { rows: 12 },

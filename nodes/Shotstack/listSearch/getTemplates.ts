@@ -13,11 +13,8 @@ type TemplateSummary = {
 };
 
 /**
- * Lists the templates saved in the user's own Shotstack account, so they can
- * pick one by name instead of pasting an ID.
- *
- * Newest first, because the one you just made in Studio is the one you want.
- * n8n shows the first handful and filters as you type.
+ * Lists the templates in the user's Shotstack account, so they can pick one by
+ * name instead of pasting an ID. Newest first.
  */
 export async function getTemplates(
 	this: ILoadOptionsFunctions,

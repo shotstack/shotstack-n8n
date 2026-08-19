@@ -54,19 +54,16 @@ export class ShotstackApi implements ICredentialType {
 	/**
 	 * Sends the key to api.shotstack.io and nowhere else.
 	 *
-	 * Download Video fetches whatever address the previous step produced, so a
-	 * blanket header would hand the key to that host. Only the API authenticates
-	 * anything: cdn.shotstack.io serves public files and needs no key, and a
-	 * narrow allowlist also keeps the key away from any other subdomain,
-	 * including one that later points somewhere we do not control.
+	 * Download Video fetches whatever address the previous step produced. A
+	 * blanket header would hand the key to that host. Only the API needs a key;
+	 * cdn.shotstack.io serves public files.
 	 */
 	authenticate: IAuthenticate = async (
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> => {
-		// axios ignores baseURL when url is absolute, so read them in that order.
-		// Download Video also sets baseURL to an empty string, which is not
-		// nullish, so ?? would keep it.
+		// axios ignores baseURL when url is absolute, so read url first. Download
+		// Video sets baseURL to an empty string, which ?? would keep.
 		const url = String(requestOptions.url ?? '');
 		const target = /^https?:\/\//i.test(url) ? url : String(requestOptions.baseURL ?? '');
 

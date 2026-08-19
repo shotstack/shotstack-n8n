@@ -32,9 +32,8 @@ export class Shotstack implements INodeType {
 			headers: {
 				Accept: 'application/json',
 				'Content-Type': 'application/json',
-				// Identifies this node in Shotstack's render log so node traffic can be
-				// told apart from renders made with a plain HTTP Request node, which
-				// report a bare "n8n". Do not change this to "n8n".
+				// Names this node in Shotstack's render log. A plain HTTP Request node
+				// reports a bare "n8n", so keep this string different from that.
 				'User-Agent': 'shotstack-n8n-node/0.1.0',
 			},
 		},

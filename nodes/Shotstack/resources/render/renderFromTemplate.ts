@@ -86,7 +86,7 @@ export const renderFromTemplateDescription: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'merge',
-				// parseJson, not JSON.parse: the expression engine swallows a
+				// parseJson, not JSON.parse. The expression engine swallows a
 				// SyntaxError and would send an empty body instead of failing.
 				value: '={{ typeof $value === "string" ? $value.parseJson() : $value }}',
 			},
@@ -129,10 +129,9 @@ export const renderFromTemplateDescription: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'merge',
-				// Accept both shapes: the fixedCollection's own { mergeFields: [...] },
-				// and a bare array supplied by expression from an earlier node or an
-				// AI agent. Sending undefined rather than [] keeps the key out of the
-				// body when there is nothing to merge.
+				// Two shapes arrive here: the fixedCollection's own
+				// { mergeFields: [...] }, and a bare array from an earlier node or an
+				// AI agent. undefined, not [], keeps the key out of an empty body.
 				value:
 					'={{ Array.isArray($value) ? $value : ($value?.mergeFields?.length ? $value.mergeFields : undefined) }}',
 			},
@@ -150,8 +149,7 @@ export const renderFromTemplateDescription: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'callback',
-				// Send undefined rather than '' when the field is blank. n8n has no
-				// empty-value guard, and lodash merge skips undefined but not ''.
+				// Send undefined when blank. lodash merge skips undefined, not ''.
 				value: '={{ $value || undefined }}',
 			},
 		},
