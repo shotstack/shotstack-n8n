@@ -103,6 +103,21 @@ While bumping, release-it regenerates `.auto-changelog.md`. `CHANGELOG.md` is
 written by hand and is the real one. The generated file is pointed elsewhere and
 ignored by git, so it cannot overwrite it.
 
+### The verification scan runs after publish, not before
+
+`npx @n8n/scan-community-package <name>` takes a published package name. It
+reads the package's npm provenance, fetches the source repository the
+provenance attests to, and lints that source. So it cannot run against a local
+checkout, and a failure can only be found once a version is on npm.
+
+Publish `0.1.0-rc.1` first. A prerelease tag goes to the `next` dist-tag, so a
+scan failure never reaches anyone who runs a plain install. Scan the release
+candidate, then tag `0.1.0`.
+
+The scan lints the attested source with `@n8n/eslint-plugin-community-nodes`
+plus `no-console`, and treats an unreachable source repository as a hard
+failure. `npm run lint` covers the same rules.
+
 ### Before the first release
 
 1. **The repository must be public.** npm publishes provenance to a public
