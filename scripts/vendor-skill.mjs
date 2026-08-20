@@ -1,31 +1,21 @@
-// Copies Shotstack's official agent skill into this repo, so the node hands an
-// AI the rules Shotstack maintains rather than a set we wrote and had to keep
-// correct ourselves.
+// Copies Shotstack's agent skill into this repo, so the node hands an AI the
+// rules Shotstack maintains rather than a set we have to keep correct.
 //
-//   node scripts/vendor-skill.mjs           check the pin, rewrite the file
-//   node scripts/vendor-skill.mjs --latest  move the pin to master and rewrite
+//   node scripts/vendor-skill.mjs           rewrite from the pin
+//   node scripts/vendor-skill.mjs --latest  report if master has moved past it
 //
-// Pinned to a commit, not to a branch. The skill is the text that decides what
-// a customer's AI writes, so it has to change when this node releases, not
-// whenever someone merges upstream. Otherwise the same node version produces
-// different videos on different days and a bug report cannot be reproduced.
-//
-// Upstream is Apache-2.0. The licence and the source commit ship with the text.
+// Pinned to a commit, not a branch. This text decides what a customer's AI
+// writes, so it must change on release. Tracking a branch would make the same
+// node version produce different videos on different days.
 import { writeFileSync } from 'node:fs';
 
 const REPO = 'shotstack/shotstack-cli';
 const PIN = '671d476a6d6e071fb48dfb073fc3038f2fdd70de'; // v0.8.1, 2026-08-17
 
-// The skill is written for an agent sitting at a terminal, so part of it is the
-// command-line tool's manual. Those files are left out: they tell a reader to
-// set environment variables and run shell commands, and the AI reading this is
-// inside an n8n workflow with no terminal.
-//
-// The split is measured, not chosen. Counting invocations of the shotstack
-// command per file separates the manual from the craft:
-//   SKILL.md 13, references/ingest.md 15, references/onboarding.md 2  -> manual
-//   everything below 0 or 1, except agent-core's 3, which all read
-//   "validate before you render" and are advice worth keeping.
+// Part of the skill is the command-line tool's manual, and an AI inside n8n has
+// no terminal. Counting shotstack invocations per file separates the two:
+// SKILL.md 13, ingest.md 15, onboarding.md 2 are the manual. Everything below
+// has 0 or 1, bar agent-core's 3, which all say "validate before you render".
 const CORE = ['shared/agent-core.md'];
 const TOPICS = [
 	'references/timeline.md',
@@ -67,22 +57,16 @@ const resolveLink = (from, link) => {
 
 /**
  * Turns a file written for a file-reading agent into text that stands alone.
- *
- * The skill tells its reader to open `references/motion.md`. Pasted into an n8n
- * field nothing can, so a model is left following a dead instruction.
+ * The skill says to open `references/motion.md`; in an n8n field nothing can.
  */
 const flatten = (markdown, ref, from) =>
 	markdown
-		// Line endings first. The frontmatter pattern below anchors on \n, so a
-		// file served with CRLF would keep its frontmatter and hand a model a
-		// block of skill-runner configuration.
+		// Line endings first, or a file served with CRLF keeps its frontmatter.
 		.replace(/\r\n?/g, '\n')
-		// Drop the YAML frontmatter. It configures a skill runner, and says
-		// nothing a model needs to write a recipe.
+		// Frontmatter configures a skill runner. A model does not need it.
 		.replace(/^---\n[\s\S]*?\n---\n/, '')
-		// Every markdown link, however it is written. An earlier version required
-		// a shared/ or references/ prefix, so sibling links like ](html5.md) —
-		// six of them — stayed relative and pointed at nothing.
+		// Every link, however written. Requiring a shared/ or references/ prefix
+		// left sibling links like ](html5.md) pointing at nothing.
 		.replace(/\]\(([^)\s]+\.md)\)/gi, (whole, link) =>
 			/^[a-z]+:/i.test(link) ? whole : `](${blobUrl(ref, resolveLink(from, link))})`,
 		)
@@ -104,10 +88,8 @@ const join = async (ref, paths) => {
 
 const ref = await resolveRef();
 
-// Report and stop, before writing. Writing first left the tree holding a skill
-// vendored at master while PIN still named the old commit, and nothing else
-// checks the two agree — so the node would ship text nobody pinned while
-// rulesSource told users it came from somewhere else.
+// Stop before writing. Writing first left skill.ts vendored at master while PIN
+// still named the old commit, and rulesSource then lied to users.
 if (wantLatest && ref !== PIN) {
 	console.log(`master is ${ref.slice(0, 7)}, PIN is ${PIN.slice(0, 7)}. Nothing written.`);
 	console.log(`Set PIN to ${ref}, then run without --latest and commit both files.`);
@@ -117,8 +99,8 @@ if (wantLatest && ref !== PIN) {
 const core = await join(ref, CORE);
 const topics = await join(ref, TOPICS);
 
-// The one piece of writing that stays ours, and it is about the reader's
-// situation, not about video. Every rule below this line is Shotstack's.
+// The only writing that stays ours, and it is about the reader's situation
+// rather than about video. Everything after it is Shotstack's.
 const header = [
 	"SHOTSTACK'S OFFICIAL RULES FOR WRITING AN EDIT.",
 	`Source: ${REPO} at ${ref.slice(0, 7)}, Apache-2.0. Maintained by Shotstack.`,
@@ -142,7 +124,7 @@ const ts = `// GENERATED FILE. Do not edit by hand.
 // Rebuild with: node scripts/vendor-skill.mjs
 //
 // Shotstack's official agent skill, vendored from ${REPO}
-// at ${ref}. Licensed Apache-2.0 by Shotstack.
+// at ${ref}. Licensed Apache-2.0 by Shotstack. See NOTICE.
 
 export const SKILL_SOURCE = ${JSON.stringify({ repo: REPO, ref, license: 'Apache-2.0', url: blobUrl(ref, 'SKILL.md') }, null, 1)};
 

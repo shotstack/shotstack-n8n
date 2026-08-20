@@ -2,7 +2,7 @@
 // Rebuild with: node scripts/vendor-skill.mjs
 //
 // Shotstack's official agent skill, vendored from shotstack/shotstack-cli
-// at 671d476a6d6e071fb48dfb073fc3038f2fdd70de. Licensed Apache-2.0 by Shotstack.
+// at 671d476a6d6e071fb48dfb073fc3038f2fdd70de. Licensed Apache-2.0 by Shotstack. See NOTICE.
 
 export const SKILL_SOURCE = {
  "repo": "shotstack/shotstack-cli",

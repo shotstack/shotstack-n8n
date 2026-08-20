@@ -1,12 +1,10 @@
-// The node hands an AI two things: allowed values generated from Shotstack's
-// OpenAPI file, and Shotstack's own agent skill vendored by
-// scripts/vendor-skill.mjs. Neither is written here, so these checks are about
-// the vendoring being sound rather than the advice being right.
+// The node hands an AI a generated list of allowed values and Shotstack's own
+// agent skill. It writes neither, so these check the vendoring, not the advice.
 //
 //   npm test
 //
-// Offline on purpose. Whether the pin still matches upstream is a network
-// question, and CI asks it as a separate step.
+// Offline. Whether the pin still matches upstream is a network question, and
+// skill-freshness.yml asks it weekly.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -16,9 +14,8 @@ const read = (relative) => readFileSync(new URL(relative, import.meta.url), 'utf
 const vendored = read('../nodes/Shotstack/reference/skill.ts');
 
 const constant = (name) => {
-	// The type annotation is optional here on purpose. It exists so TypeScript
-	// widens the string instead of emitting a 110 KB literal type, and a parser
-	// that required its absence broke the moment it was added.
+	// Keep the annotation optional. It is what stops TypeScript emitting a
+	// 110 KB literal type, and a parser that forbids it breaks on sight.
 	const match = vendored.match(new RegExp(`export const ${name}(?:: string)? = ("(?:[^"\\\\]|\\\\.)*");`, 's'));
 	assert.ok(match, `${name} missing from the vendored skill`);
 	return JSON.parse(match[1]);
@@ -33,6 +30,7 @@ const check = (label, run) => {
 		console.log(`  ok    ${label}`);
 	} catch (error) {
 		failed += 1;
+		// execFileSync puts the child's output on .stderr, not in .message.
 		const detail = [error.message.split('\n')[0], error.stderr?.toString(), error.stdout?.toString()]
 			.filter(Boolean)
 			.join('\n')
@@ -42,17 +40,16 @@ const check = (label, run) => {
 };
 
 check('a recipe following the shipped rules still validates', () => {
-	// A canary. Shotstack's offline checker catches same-track overlaps, unknown
-	// fonts, non-public URLs and any schema change.
+	// Shotstack's own checker. It catches same-track overlaps, unknown fonts,
+	// non-public URLs and any schema change.
 	const cli = fileURLToPath(new URL('../node_modules/@shotstack/cli/dist/shotstack.js', import.meta.url));
 	const fixture = fileURLToPath(new URL('./canary-recipe.json', import.meta.url));
 	execFileSync(process.execPath, [cli, 'validate', '--strict', fixture], { stdio: 'pipe' });
 });
 
 check('the shipped skill matches the pin the script names', () => {
-	// Offline. Catches a tree where someone ran --latest, saw it fail, and left
-	// skill.ts vendored at master while PIN still names the old commit — the
-	// node would then ship text nobody pinned and say otherwise in rulesSource.
+	// Otherwise the node ships text nobody pinned, while rulesSource names a
+	// different commit.
 	const script = read('../scripts/vendor-skill.mjs');
 	const pin = script.match(/^const PIN = '([0-9a-f]{40})'/m)?.[1];
 	assert.ok(pin, 'could not read PIN from vendor-skill.mjs');
@@ -68,14 +65,9 @@ check('the vendored skill says where it came from', () => {
 });
 
 check('no link tells the model to open a file it cannot reach', () => {
-	// The skill is written for an agent that reads files off disk. Pasted into
-	// an n8n field nothing can, so vendor-skill.mjs rewrites those links to
-	// addresses.
-	//
-	// Match every markdown link and keep the ones that are not addresses. An
-	// earlier version of this check reused the generator's own pattern, which
-	// required a shared/ or references/ prefix, so it shared the generator's
-	// blind spot and passed green while six sibling links stayed relative.
+	// Match every markdown link and keep whatever is not an address. Do not
+	// reuse the generator's pattern here: an earlier version did, inherited its
+	// blind spot, and passed while six links still pointed at nothing.
 	const text = constant('SKILL_CORE') + constant('SKILL_TOPICS');
 	const relative = [...text.matchAll(/\]\(([^)\s]+\.md)\)/g)]
 		.map((m) => m[1])
@@ -84,17 +76,15 @@ check('no link tells the model to open a file it cannot reach', () => {
 });
 
 check('the command-line manual is left out', () => {
-	// SKILL.md and ingest.md tell the reader to set environment variables and
-	// run shell commands. An AI inside n8n has no terminal.
+	// Those files tell the reader to run shell commands. An AI in n8n cannot.
 	const core = constant('SKILL_CORE');
 	assert.doesNotMatch(core, /^===== SKILL\.md/m, 'SKILL.md is the CLI manual and must not be vendored');
 	assert.doesNotMatch(core, /^===== references\/ingest\.md/m, 'ingest.md is the upload manual');
 });
 
 check('the header answers every instruction the model cannot follow', () => {
-	// Whatever the skill tells the reader to do outside n8n, the header has to
-	// name. It opens by saying to download the schema, and it uses the shotstack
-	// command throughout — both across core and topics, not just core.
+	// Search core and topics both. The skill asks the reader to download a
+	// schema and to run the CLI, and the header has to answer each.
 	const text = constant('SKILL_CORE') + constant('SKILL_TOPICS');
 	const header = constant('SKILL_HEADER');
 

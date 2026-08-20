@@ -1,14 +1,8 @@
 # Watches Shotstack's agent skill, which this node vendors.
 #
-# Two questions, and only one of them is an error.
-#
-# Can we still fetch what we pinned? A rename or a reorganised folder breaks the
-# vendoring script, and nobody finds out until someone tries to refresh. That
-# fails this job. It runs the real script rather than a copy of its path list,
-# so the two cannot drift apart.
-#
-# Has upstream moved on? The pin is deliberate, so being behind is normal. This
-# reports it so the pin stays a decision rather than something that rots.
+# Asks two questions. A skill we can no longer fetch fails the job, because that
+# breaks the vendoring silently. A skill that has merely moved on only reports,
+# because the pin is deliberate.
 
 name: Skill freshness
 
@@ -31,8 +25,8 @@ jobs:
       - run: npm ci
 
       - name: The pinned skill must still be fetchable, and match what we shipped
-        # Re-vendors all eleven files at PIN. A moved file fails the fetch; a
-        # committed file that no longer matches the pin fails the diff.
+        # Runs the real script, not a copy of its file list, so the two cannot
+        # drift. A moved file fails the fetch; a stale commit fails the diff.
         run: |
           node scripts/vendor-skill.mjs
           if ! git diff --quiet -- nodes/Shotstack/reference/skill.ts; then
@@ -42,9 +36,8 @@ jobs:
           fi
 
       - name: Report whether the pin is behind
-        # Tolerant on purpose. Unauthenticated api.github.com allows 60 requests
-        # an hour per IP and runners share addresses, so a 403 must read as "did
-        # not find out", never as "upstream changed".
+        # The API is unauthenticated and runners share addresses, so a rate limit
+        # must read as "did not find out", never as "upstream changed".
         run: |
           pinned=$(grep -oE "^const PIN = '[0-9a-f]{40}'" scripts/vendor-skill.mjs | grep -oE '[0-9a-f]{40}')
           latest=$(curl -sf -m 20 https://api.github.com/repos/shotstack/shotstack-cli/commits/master \
