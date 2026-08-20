@@ -1,0 +1,82 @@
+name: Something is not working
+description: A render fails, a field behaves oddly, or the node will not install.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The render ID is the single most useful thing here. It lets Shotstack
+        look up the exact job rather than guess from a description.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: input
+    id: render-id
+    attributes:
+      label: Render ID
+      description: Returned by Render Asset and Render Template as `id`. Leave blank if the step never got that far.
+      placeholder: 4a37ef85-b4d1-4b4a-90be-6515290c5091
+
+  - type: dropdown
+    id: operation
+    attributes:
+      label: Which operation
+      options:
+        - Render → Render Asset
+        - Render → Render Template
+        - Render → Get Render Status
+        - Asset → Get Asset by Render ID
+        - Asset → Download File
+        - Reference → Get Reference
+        - Installing the node
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment on the credential
+      options:
+        - Sandbox
+        - Production
+    validations:
+      required: true
+
+  - type: input
+    id: n8n-version
+    attributes:
+      label: n8n version
+      placeholder: "2.35.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: How you run n8n
+      options:
+        - Self-hosted
+        - n8n Cloud
+        - Local, npm run dev
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Version of this node
+      description: Settings → Community Nodes.
+      placeholder: "0.1.0"
+
+  - type: textarea
+    id: error
+    attributes:
+      label: The error n8n showed
+      description: Paste it whole. The description under the message usually names the cause.
+      render: text

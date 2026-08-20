@@ -2,6 +2,60 @@
 
 For whoever owns this repository. Users do not need this file.
 
+## Setting up
+
+```bash
+git clone https://github.com/shotstack/shotstack-n8n.git
+cd shotstack-n8n
+npm ci
+npm test
+```
+
+Node.js 20.19 or later. `npm test` builds first, so a green run also proves the
+build.
+
+## Running it in a real n8n
+
+```bash
+npm run dev
+```
+
+This starts n8n with the node loaded from `dist/`. It needs a real terminal —
+it draws a live display — and the first start takes several minutes. Your local
+n8n, its credentials and its workflows persist in `~/.n8n`.
+
+Add a **Shotstack API** credential, set Environment to Sandbox, and paste a
+sandbox key. Sandbox renders are free and watermarked.
+
+`npm run dev` runs the compiled node, but it does not prove the package
+installs. Before a release, pack it and install the tarball into a clean n8n:
+
+```bash
+npm pack
+# then in a clean n8n: npm install /path/to/shotstack-n8n-nodes-shotstack-<version>.tgz
+```
+
+## Changing something
+
+1. Branch off `dev`.
+2. Make the change. Add or adjust a test if the change is behavioural.
+3. `node scripts/review-check.mjs` — 32 checks, all must pass.
+4. `npm test` and `npm run lint`.
+5. Open a pull request into `dev`. CI runs lint, build, tests and the
+   reference-drift check on every PR.
+6. `dev` merges into `main`, and only a tag on `main` publishes.
+
+Do not commit generated files by hand. `nodes/Shotstack/reference/` is written
+by the two scripts below, and CI fails if it does not match.
+
+## Reporting a problem
+
+Open an issue at
+[github.com/shotstack/shotstack-n8n/issues](https://github.com/shotstack/shotstack-n8n/issues).
+Include the n8n version, whether it is self-hosted or Cloud, the operation, the
+environment, and the render ID if there is one. A render ID lets Shotstack look
+up the exact job.
+
 ## What it costs to keep
 
 About **3 hours a month**, in bursts rather than weekly. Most months are zero.

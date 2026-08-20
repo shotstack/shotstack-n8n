@@ -6,7 +6,7 @@ Render video and images from JSON, inside n8n.
 video and images from a JSON edit and returns a hosted URL. This node puts that in
 your n8n workflows.
 
-[Installation](#installation) · [Credentials](#credentials) · [Operations](#operations) · [Waiting for a render](#waiting-for-a-render) · [Working with the file](#working-with-the-file) · [Use with AI agents](#use-with-ai-agents) · [Resources](#resources)
+[Installation](#installation) · [Credentials](#credentials) · [Your first render](#your-first-render) · [Operations](#operations) · [Waiting for a render](#waiting-for-a-render) · [Working with the file](#working-with-the-file) · [Use with AI agents](#use-with-ai-agents) · [Resources](#resources)
 
 ## Installation
 
@@ -26,6 +26,32 @@ Sandbox and Production have separate keys.
 The credential's **Environment** switch defaults to Sandbox, so you can build
 before you spend anything. The node sends your key to `api.shotstack.io` and to
 no other host.
+
+**One credential holds one key and one environment.** Because the two
+environments have different keys, create a second credential when you are ready
+for Production, and switch the node to it. If the key and the switch disagree,
+Shotstack answers 403 and names the environment it expected, so **Test** on the
+credential catches it before any workflow runs.
+
+## Your first render
+
+Four Shotstack nodes in a row. Each one reads the previous step, so only the
+first needs anything typed into it.
+
+1. **Render → Render Asset.** Paste an edit into the **Edit** field. The
+   placeholder shown in the field is a working one to start from.
+2. **Render → Get Render Status.** Turn on **Wait for the Render To Finish**.
+   Render ID already defaults to the id from step 1.
+3. **Asset → Get Asset by Render ID.** Returns the permanent CDN URL. This step
+   waits for Shotstack to publish the file, so do not add a Wait node.
+4. **Asset → Download File** — only if the next node needs the bytes rather
+   than a URL. Most do not.
+
+Keep the credential on Sandbox while you build. Renders are free there, and the
+output carries a watermark.
+
+For long or bulk renders, replace steps 2 and 3 with a callback — see
+[Waiting for a render](#waiting-for-a-render).
 
 ## Operations
 
