@@ -76,9 +76,25 @@ Do these before submitting for verification, not after.
    twelve months, deprecate on purpose with a final release and a README notice.
    n8n never forces this. Stale nodes sit on npm for years.
 
+## Reviewing before you release
+
+```bash
+node scripts/review-check.mjs
+```
+
+Nineteen checks in one pass: build, lint, tests, the n8n verification
+requirements, a clean history, that every operation value is a real
+`operationId` and every display name matches the spec summary, that the two
+operations with no spec entry say so, that an AI agent gets a real tool
+description, and that the README has not started restating the API again.
+
+It prints PASS or FAIL per row and exits non-zero on any FAIL. It does not
+cover the one thing that matters most: a real render through the node.
+
 ## Releasing
 
 ```bash
+node scripts/review-check.mjs
 npm test        # the release command does NOT run these
 npm run release
 ```
