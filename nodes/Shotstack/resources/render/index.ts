@@ -9,7 +9,7 @@ const showOnlyForRender = {
 
 // Every Edit API response is wrapped as { success, message, response }.
 // Unwrapping it lets workflows read {{$json.id}} rather than {{$json.response.id}}.
-export const unwrapResponse: PostReceiveAction[] = [
+const unwrapResponse: PostReceiveAction[] = [
 	{
 		type: 'rootProperty',
 		properties: { property: 'response' },

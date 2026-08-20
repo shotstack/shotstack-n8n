@@ -202,6 +202,114 @@ check('Docs', 'every README link resolves', () => {
 	};
 });
 
+// Sanity. The things a reader spots in ten seconds and a compiler never will.
+const tracked = sh('git ls-files').split('\n').filter(Boolean);
+const readable = tracked.filter(
+	(f) =>
+		!f.includes('package-lock.json') &&
+		!f.endsWith('.svg') &&
+		!f.startsWith('nodes/Shotstack/reference/') && // generated, and it quotes other people's prose
+		!f.endsWith('review-check.mjs'), // this file holds the patterns, so it matches them all
+);
+const textOf = (f) => {
+	try {
+		return readFileSync(f, 'utf8');
+	} catch {
+		return '';
+	}
+};
+
+const sweep = (label, pattern, files = readable) => {
+	check('Sanity', label, () => {
+		const hits = [];
+		for (const f of files) {
+			textOf(f)
+				.split('\n')
+				.forEach((line, i) => {
+					if (pattern.test(line)) hits.push(`${f}:${i + 1}`);
+				});
+		}
+		return { ok: hits.length === 0, actual: hits.length ? hits.slice(0, 3).join(', ') : 'none' };
+	});
+};
+
+sweep('no TODO, FIXME or XXX left behind', /\b(TODO|FIXME|XXX)\b/);
+sweep('no scaffold text from the n8n starter', /to be completed|delete if not|your-node|n8n-nodes-starter|lorem ipsum/i);
+sweep('no local paths or usernames', /C:\\Users|\/Users\/[a-z]+\/|jesus/i);
+sweep('no secrets', /sk_live|glsa_[A-Za-z0-9]|["'][A-Za-z0-9]{32,}["']\s*;?\s*\/\/\s*key/i);
+sweep('no trailing whitespace', /[ \t]+$/);
+
+check('Sanity', 'no console left in shipped node code', () => {
+	const shipped = tracked.filter((f) => /^(nodes|credentials)\/.*\.ts$/.test(f));
+	const hits = shipped.filter((f) => /\bconsole\./.test(textOf(f)));
+	return { ok: hits.length === 0, actual: hits.length ? hits.join(', ') : 'none' };
+});
+check('Sanity', 'no run of blank lines', () => {
+	const hits = readable.filter((f) => /\n{4,}/.test(textOf(f)));
+	return { ok: hits.length === 0, actual: hits.length ? hits.join(', ') : 'none' };
+});
+check('Sanity', 'no empty section in any markdown file', () => {
+	const empty = [];
+	for (const f of tracked.filter((x) => x.endsWith('.md'))) {
+		const lines = textOf(f).split('\n');
+		lines.forEach((line, i) => {
+			if (!/^#{2,6} /.test(line)) return; // a document title may be followed by a heading
+			const rest = lines.slice(i + 1).filter((x) => x.trim());
+			if (!rest.length || /^#{1,6} /.test(rest[0])) empty.push(`${f}:${i + 1}`);
+		});
+	}
+	return { ok: empty.length === 0, actual: empty.length ? empty.join(', ') : 'every heading has content' };
+});
+check('Sanity', 'no export that nothing imports', () => {
+	const code = tracked.filter((f) => /\.(ts|mjs)$/.test(f) && !f.startsWith('nodes/Shotstack/reference/'));
+	const imports = code.map(textOf).join('\n');
+	const stray = [];
+	for (const f of code) {
+		const body = textOf(f);
+		for (const m of body.matchAll(/export const (\w+)/g)) {
+			const name = m[1];
+			// Imported by name anywhere, or re-exported. Same-file use does not count.
+			const importedElsewhere = new RegExp(`import[^;]*\\b${name}\\b[^;]*from`).test(imports);
+			if (!importedElsewhere) stray.push(`${name} in ${f}`);
+		}
+	}
+	return { ok: stray.length === 0, actual: stray.length ? stray.join(', ') : 'every export is imported' };
+});
+check('Sanity', 'package.json metadata is filled in', () => {
+	const missing = ['description', 'author', 'license', 'homepage', 'repository', 'bugs'].filter(
+		(k) => !pkg[k] || (typeof pkg[k] === 'object' && Object.keys(pkg[k]).length === 0),
+	);
+	return { ok: missing.length === 0, actual: missing.length ? `missing ${missing.join(', ')}` : 'all present' };
+});
+check('Sanity', 'CHANGELOG names a real version and date', () => {
+	const head = textOf('CHANGELOG.md').split('\n').find((l) => /^## /.test(l)) ?? '';
+	const ok = /\d+\.\d+\.\d+/.test(head) && /\d{4}-\d{2}-\d{2}/.test(head) && !/unreleased/i.test(head);
+	return { ok, actual: head.replace(/^##\s*/, '') || 'no version heading' };
+});
+check('Sanity', 'both icons exist and are referenced', () => {
+	const themes = node().description.icon ?? {};
+	const files = Object.values(themes).map((v) => String(v).replace(/^file:/, ''));
+	const missing = files.filter((f) => !existsSync(resolve('nodes/Shotstack', f)));
+	return {
+		ok: Object.keys(themes).length === 2 && missing.length === 0,
+		actual: missing.length ? `missing ${missing.join(', ')}` : `${Object.keys(themes).join(' + ')}`,
+	};
+});
+check('Sanity', 'every field and operation has a description', () => {
+	const blank = [];
+	const walk = (list, where) => {
+		for (const p of list ?? []) {
+			if (p.displayName && !p.description && p.type !== 'options') blank.push(`${where}.${p.name}`);
+			for (const o of p.options ?? []) {
+				if (p.name === 'operation' && !o.description) blank.push(`operation ${o.value}`);
+				walk(o.values, where);
+			}
+		}
+	};
+	walk(node().description.properties, 'node');
+	return { ok: blank.length === 0, actual: blank.length ? blank.join(', ') : 'all described' };
+});
+
 let lastGroup = '';
 let failed = 0;
 for (const row of rows) {
