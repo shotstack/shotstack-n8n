@@ -1,0 +1,7 @@
+# GitHub requests a review from the owner on every pull request that touches
+# these paths. Keep this in step with the owner named in CONTRIBUTING.md.
+#
+# One name with no backup is a single point of failure. Add a second handle
+# here when one is agreed.
+
+* @Jesus-Shotstack

@@ -1,8 +1,10 @@
 # Maintaining the Shotstack n8n node
 
-**Owner:** Jesús, Growth Engineering. **Backup:** not named yet.
+**Owner:** @Jesus-Shotstack, Growth Engineering. **Backup:** not named yet.
 Reach the owner through [an issue](https://github.com/shotstack/shotstack-n8n/issues)
-or support@shotstack.io.
+or support@shotstack.io. `.github/CODEOWNERS` requests their review on every
+pull request. Security problems go to
+[SECURITY.md](SECURITY.md), not to a public issue.
 
 If you are covering while the owner is away, you need one of the three jobs
 below. Everything after them is background you can read later.
