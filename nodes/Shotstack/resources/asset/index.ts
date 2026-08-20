@@ -30,7 +30,7 @@ export const assetDescription: INodeProperties[] = [
 				name: 'Download File',
 				value: 'download',
 				description:
-					'Fetch a hosted file as binary data, so the next step can attach or upload it. Not an API operation: it reads the URL a previous step produced.',
+					'Fetch a hosted file as binary data. The next step can then attach or upload it. This operation reads the URL that the previous step produced.',
 				action: 'Download file',
 				routing: {
 					request: {

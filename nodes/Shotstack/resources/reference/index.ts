@@ -64,7 +64,7 @@ const buildReference = async function (
 		} catch {
 			// The reference alone is still useful. Report the gap, do not fail.
 			json.documentation = '';
-			json.documentationError = `Could not reach ${FULL_DOCS_URL}. The rules above are complete without it.`;
+			json.documentationError = `The node did not reach ${FULL_DOCS_URL}. The reference above is complete without it.`;
 		}
 	}
 

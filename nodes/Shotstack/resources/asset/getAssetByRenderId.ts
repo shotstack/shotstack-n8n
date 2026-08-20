@@ -114,7 +114,7 @@ function describeMissingAsset(
 		message = 'The render failed, so there is no file to host';
 		description = renderError
 			? `Shotstack reported: ${renderError}`
-			: 'Shotstack gave no reason. Open the render in the Shotstack dashboard.';
+			: 'The response carries no error detail. Open the render in the Shotstack dashboard.';
 	} else if (status === undefined) {
 		message = `Shotstack has no render with the ID ${renderId}`;
 		description =
@@ -123,9 +123,9 @@ function describeMissingAsset(
 		message = `The render is still ${status} after ${MAX_WAIT_MS / 1000} seconds`;
 		description = 'Long renders need a longer Wait before this step.';
 	} else {
-		message = `The render finished, but Shotstack has not published the file after ${MAX_WAIT_MS / 1000} seconds`;
+		message = `The render is complete, and Shotstack is still publishing the file after ${MAX_WAIT_MS / 1000} seconds`;
 		description =
-			'This is unusual. The render is fine. Run this step again in a minute, or read the temporary URL from the Get action instead.';
+			'Run this step again in a minute. You can also read the temporary URL from Get Render Status.';
 	}
 
 	throw new NodeOperationError(this.getNode(), message, {
@@ -202,8 +202,8 @@ const waitForHostedAsset = async function (
 			const states = assets.map((a) => (a.attributes as IDataObject)?.status);
 
 			if (states.some((s) => s === 'failed')) {
-				throw new NodeOperationError(this.getNode(), 'Shotstack failed to publish the file', {
-					description: 'The render worked. Hosting did not. Report this render ID to Shotstack.',
+				throw new NodeOperationError(this.getNode(), 'Shotstack did not publish the file', {
+					description: 'The render is complete. Send this render ID to Shotstack support.',
 					itemIndex: this.getItemIndex(),
 				});
 			}
@@ -214,7 +214,7 @@ const waitForHostedAsset = async function (
 			if (states.length > 0 && live.length === 0) {
 				throw new NodeOperationError(this.getNode(), 'Shotstack has deleted the files for this render', {
 					description:
-						'The render finished, but its hosted files are gone. Sandbox renders are removed after a time. Render it again.',
+						'The render is complete, and its hosted files are gone. Shotstack removes Sandbox files after a retention period. Render it again.',
 					itemIndex: this.getItemIndex(),
 				});
 			}

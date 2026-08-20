@@ -41,7 +41,7 @@ const explainMissingUrl: PreSendAction = async function (
 		message = 'The render failed, so there is no file to download';
 		description = renderError
 			? `Shotstack reported: ${renderError}`
-			: 'Shotstack gave no reason. Open the render in the Shotstack dashboard.';
+			: 'The response carries no error detail. Open the render in the Shotstack dashboard.';
 	} else if (status !== undefined && status !== 'done') {
 		message = `The render is not finished yet. Its status is "${status}"`;
 		description =

@@ -29,7 +29,7 @@ export class ShotstackApi implements ICredentialType {
 				{
 					name: 'Sandbox',
 					value: 'stage',
-					description: 'Free renders, watermarked output. Use this to try things out',
+					description: 'Free renders with a watermark. Use this environment while you build',
 				},
 				{
 					name: 'Production',
@@ -38,7 +38,7 @@ export class ShotstackApi implements ICredentialType {
 				},
 			],
 			default: 'stage',
-			description: 'Sandbox and production use separate API keys. Make sure the key below matches',
+			description: 'Sandbox and Production use separate API keys. Enter the key that matches this environment',
 		},
 		{
 			displayName: 'API Key',

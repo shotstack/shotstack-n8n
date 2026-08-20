@@ -19,7 +19,7 @@ and do not alter the meaning:
   - Three files left out, being the command-line tool's manual rather than
     guidance on writing an edit: SKILL.md, references/ingest.md and
     references/onboarding.md.
-  - A short note prepended, marked as ours, explaining the reader's situation.
+  - A short note prepended, marked as Shotstack's, explaining the reader's situation.
 
 The exact source commit also travels with the data, as SKILL_SOURCE, so it can
 be read at runtime rather than only found here.

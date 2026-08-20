@@ -31,7 +31,7 @@ export const renderDescription: INodeProperties[] = [
 				name: 'Render Asset',
 				value: 'postRender',
 				description:
-					'Render a video or image from a Shotstack edit. This is the general render method, and the only one with no ceiling: any number of clips, any asset type, and the generative assets. Point an AI agent here.',
+					'Render a video or image from a Shotstack edit. This is the general render method. It accepts any number of clips, every asset type and the generative assets. Point an AI agent here.',
 				action: 'Render asset',
 				routing: {
 					request: {
@@ -58,7 +58,7 @@ export const renderDescription: INodeProperties[] = [
 				name: 'Get Render Status',
 				value: 'getRender',
 				description:
-					'Check the status of a render, and get its temporary URL. The URL expires, so use Asset → Get Asset by Render ID for one to keep.',
+					'Check the status of a render and get its temporary URL. Use Asset → Get Asset by Render ID for the permanent URL.',
 				action: 'Get render status',
 				routing: {
 					request: {

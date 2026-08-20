@@ -8,6 +8,8 @@
 // writes, so it must change on release. Tracking a branch would make the same
 // node version produce different videos on different days.
 import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const REPO = 'shotstack/shotstack-cli';
 const PIN = '671d476a6d6e071fb48dfb073fc3038f2fdd70de'; // v0.8.1, 2026-08-17
@@ -86,41 +88,53 @@ const join = async (ref, paths) => {
 	return parts.join('\n\n');
 };
 
-const ref = await resolveRef();
+/**
+ * The only writing here that stays ours, and it names controls in the n8n UI.
+ *
+ * A test rebuilds this and compares it to the committed skill.ts, so renaming
+ * an operation without regenerating fails the build instead of pointing a
+ * customer's model at a control that is not there.
+ */
+export const buildHeader = (ref) =>
+	[
+		"SHOTSTACK'S OFFICIAL RULES FOR WRITING AN EDIT.",
+		`Source: ${REPO} at ${ref.slice(0, 7)}, Apache-2.0. Maintained by Shotstack.`,
+		'',
+		'Three things before you read it. It was written for an agent at a terminal;',
+		'you are writing JSON for an n8n workflow.',
+		'',
+		'1. Do not fetch anything. The rules below open by telling you to download the',
+		'   schema. It is already above, under SHOTSTACK RECIPE REFERENCE, and it is',
+		'   the exhaustive list. You have no way to fetch, and no need to.',
+		'2. You cannot run the shotstack command. Where the text uses it, that is a',
+		'   person checking a recipe by hand. Skip those steps.',
+		'3. Where the rules and the reference above disagree on which asset types are',
+		'   current, the reference wins. The reference is generated from the current',
+		'   schema. The REPLACED list above is the authority.',
+		'',
+		'Put the JSON you produce in the Edit field of the Render Asset operation.',
+	].join('\n');
 
-// Stop before writing. Writing first left skill.ts vendored at master while PIN
-// still named the old commit, and rulesSource then lied to users.
-if (wantLatest && ref !== PIN) {
-	console.log(`master is ${ref.slice(0, 7)}, PIN is ${PIN.slice(0, 7)}. Nothing written.`);
-	console.log(`Set PIN to ${ref}, then run without --latest and commit both files.`);
-	process.exit(1);
-}
+// Importing this file must not rewrite the repository, so the test can reuse
+// buildHeader above.
+const runDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 
-const core = await join(ref, CORE);
-const topics = await join(ref, TOPICS);
+if (runDirectly) {
+	const ref = await resolveRef();
 
-// The only writing that stays ours, and it is about the reader's situation
-// rather than about video. Everything after it is Shotstack's.
-const header = [
-	"SHOTSTACK'S OFFICIAL RULES FOR WRITING AN EDIT.",
-	`Source: ${REPO} at ${ref.slice(0, 7)}, Apache-2.0. Maintained by Shotstack.`,
-	'',
-	'Three things before you read it. It was written for an agent at a terminal;',
-	'you are writing JSON for an n8n workflow.',
-	'',
-	'1. Do not fetch anything. The rules below open by telling you to download the',
-	'   schema. It is already above, under SHOTSTACK RECIPE REFERENCE, and it is',
-	'   the exhaustive list. You have no way to fetch, and no need to.',
-	'2. You cannot run the shotstack command. Where the text uses it, that is a',
-	'   person checking a recipe by hand. Skip those steps.',
-	'3. Where the rules and the reference above disagree on which asset types are',
-	'   current, the reference wins. It is generated from the schema; the rules are',
-	'   pinned text and can lag. The REPLACED list above is the authority.',
-	'',
-	'Put the JSON you produce in the Edit field of the Render Asset operation.',
-].join('\n');
+	// Stop before writing. Writing first left skill.ts vendored at master while
+	// PIN still named the old commit, and rulesSource then lied to users.
+	if (wantLatest && ref !== PIN) {
+		console.log(`master is ${ref.slice(0, 7)}, PIN is ${PIN.slice(0, 7)}. Nothing written.`);
+		console.log(`Set PIN to ${ref}, then run without --latest and commit both files.`);
+		process.exit(1);
+	}
 
-const ts = `// GENERATED FILE. Do not edit by hand.
+	const core = await join(ref, CORE);
+	const topics = await join(ref, TOPICS);
+	const header = buildHeader(ref);
+
+	const ts = `// GENERATED FILE. Do not edit by hand.
 // Rebuild with: node scripts/vendor-skill.mjs
 //
 // Shotstack's official agent skill, vendored from ${REPO}
@@ -135,9 +149,10 @@ export const SKILL_CORE: string = ${JSON.stringify(core)};
 export const SKILL_TOPICS: string = ${JSON.stringify(topics)};
 `;
 
-writeFileSync(new URL('../nodes/Shotstack/reference/skill.ts', import.meta.url), ts);
+	writeFileSync(new URL('../nodes/Shotstack/reference/skill.ts', import.meta.url), ts);
 
-console.log(`vendored ${REPO} at ${ref.slice(0, 7)}`);
-console.log(`  core   ${CORE.length} files, ${core.length} chars`);
-console.log(`  topics ${TOPICS.length} files, ${topics.length} chars`);
-console.log(`  left out ${EXCLUDED}`);
+	console.log(`vendored ${REPO} at ${ref.slice(0, 7)}`);
+	console.log(`  core   ${CORE.length} files, ${core.length} chars`);
+	console.log(`  topics ${TOPICS.length} files, ${topics.length} chars`);
+	console.log(`  left out ${EXCLUDED}`);
+}

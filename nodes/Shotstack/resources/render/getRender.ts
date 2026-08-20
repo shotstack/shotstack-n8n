@@ -96,7 +96,7 @@ const waitForRender = async function (
 					description:
 						typeof body.error === 'string' && body.error
 							? `Shotstack reported: ${body.error}`
-							: 'Shotstack gave no reason. Open the render in the Shotstack dashboard.',
+							: 'The response carries no error detail. Open the render in the Shotstack dashboard.',
 					itemIndex: this.getItemIndex(),
 				});
 			}
@@ -113,7 +113,11 @@ const waitForRender = async function (
 	// Name what happened. A bare "still unknown" sends the user to raise a
 	// timeout that was never the problem.
 	const reached =
-		last !== 'unknown' ? `The render is still ${last}` : `Shotstack kept answering ${lastCode || 'nothing'}`;
+		last !== 'unknown'
+			? `The render is still ${last}`
+			: lastCode
+				? `Shotstack returned status ${lastCode}`
+				: 'The status check did not complete';
 	throw new NodeOperationError(this.getNode(), `${reached} after ${minutes} minutes`, {
 		description:
 			'Raise Give Up After for a long render, or turn off Wait For The Render To Finish and use a Callback URL on the render step instead.',

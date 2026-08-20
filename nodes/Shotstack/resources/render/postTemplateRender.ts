@@ -14,7 +14,7 @@ export const postTemplateRenderDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: { show: showOnly },
 		description:
-			'A template saved in your Shotstack account. Pick one from the list, or paste an ID if you know it. Templates are made in Shotstack Studio — a new account has none yet',
+			'A template saved in your Shotstack account. Pick one from the list, or paste an ID. Create templates in Shotstack Studio',
 		modes: [
 			{
 				displayName: 'From List',
