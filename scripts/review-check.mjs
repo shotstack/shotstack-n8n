@@ -139,6 +139,63 @@ check('Follows the spec', 'display names match the spec summary', () => {
 	}
 	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : 'all match' };
 });
+check('Follows the spec', 'every operation calls the method and path the spec gives it', () => {
+	// The checks above compare names. Names being right proved nothing about the
+	// request: changing url to '/rendr' left every other check green, so a node
+	// that called the wrong endpoint would have shipped 33/33.
+	if (!existsSync(OAS)) return { ok: false, actual: 'run npm ci first' };
+	const oas = JSON.parse(readFileSync(OAS, 'utf8'));
+
+	// operationId -> "METHOD /path", with parameter names flattened.
+	const spec = {};
+	for (const [path, item] of Object.entries(oas.paths)) {
+		for (const [method, op] of Object.entries(item)) {
+			if (!op.operationId) continue;
+			spec[op.operationId] = `${method.toUpperCase()} ${path.replace(/\{[^}]+\}/g, '{}')}`;
+		}
+	}
+
+	const properties = node().description.properties;
+	// An n8n route can sit on the operation option or on any property shown for
+	// it, so collect both and let the property win, which is how n8n merges them.
+	const routeFor = (value) => {
+		let method;
+		let url;
+		for (const p of properties.filter((x) => x.name === 'operation')) {
+			const option = (p.options ?? []).find((o) => o.value === value);
+			if (!option) continue;
+			method = option.routing?.request?.method ?? method;
+			url = option.routing?.request?.url ?? url;
+		}
+		for (const p of properties) {
+			if (!p.displayOptions?.show?.operation?.includes(value)) continue;
+			method = p.routing?.request?.method ?? method;
+			url = p.routing?.request?.url ?? url;
+		}
+		if (url === undefined) return undefined;
+		// '=/render/{{$value}}' -> '/render/{}'
+		const path = String(url)
+			.replace(/^=/, '')
+			.replace(/\{\{[^}]*\}\}/g, '{}')
+			.trim();
+		return `${method ?? 'GET'} ${path}`;
+	};
+
+	const wrong = [];
+	for (const p of properties.filter((x) => x.name === 'operation')) {
+		for (const option of p.options ?? []) {
+			const expected = spec[option.value];
+			if (!expected) continue; // the two that are ours; covered by the next check
+			const actual = routeFor(option.value);
+			if (actual !== expected) wrong.push(`${option.value}: node sends "${actual}", spec says "${expected}"`);
+		}
+	}
+	const checked = Object.keys(spec).length && wrong.length === 0;
+	return {
+		ok: wrong.length === 0,
+		actual: wrong.length ? wrong.join(' | ') : checked ? 'all four match the spec exactly' : 'none checked',
+	};
+});
 check('Follows the spec', 'the two non-spec operations say so', () => {
 	const missing = [];
 	for (const p of node().description.properties.filter((x) => x.name === 'operation')) {
