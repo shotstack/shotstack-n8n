@@ -1,18 +1,20 @@
-// Writes nodes/Shotstack/reference/recipeReference.ts from Shotstack's OpenAPI
-// file, so the reference the node hands an AI cannot drift from the real API.
+// Writes nodes/Shotstack/reference/recipeReference.ts: every asset type the API
+// accepts, with its nested shape and allowed values.
 //
-//   node scripts/build-reference.mjs [path-to-openapi.json]
+//   node scripts/build-reference.mjs
 //
-// Shotstack publishes no stable address for the spec, so a copy sits beside
-// this script and is the default. Replace that copy when the API changes.
+// The schema comes from @shotstack/schemas, Shotstack's own published package,
+// so bumping that dependency updates what the node tells an AI is allowed.
 //
 // This covers what is allowed. How to write a good edit comes from Shotstack's
 // agent skill instead — see scripts/vendor-skill.mjs.
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const specPath = process.argv[2] ?? new URL('./shotstack-openapi.json', import.meta.url);
-
-const S = JSON.parse(readFileSync(specPath, 'utf8')).components.schemas;
+// The `json` entry point, not the bundled OpenAPI file beside it. That file is
+// real but the package does not export it, so reaching for it breaks whenever
+// the layout changes.
+const { edit } = await import('@shotstack/schemas/json');
+const S = edit.$defs;
 
 // A $ref can name a schema the file does not define. Keep the raw node then,
 // because it often carries the properties inline anyway.
@@ -21,11 +23,19 @@ const deref = (v) => {
 	return S[v.$ref.split('/').pop()] ?? v;
 };
 
+// A few enums are enormous. Inlining the transition list on the clip line
+// printed all 62 names twice, before the TRANSITION section printed them again.
+const LONG_ENUM = 400;
+
 // Depth 0 prints a nested object's own keys. Deeper than that the reference
-// becomes longer than the model can use.
+// becomes longer than a model can use.
+
 const typeOf = (v, depth = 0) => {
 	const d = deref(v) || {};
-	if (d.enum) return d.enum.join('|');
+	if (d.enum) {
+		const joined = d.enum.join('|');
+		return joined.length > LONG_ENUM ? `<one of ${d.enum.length}, listed below>` : joined;
+	}
 	if (d.oneOf) return [...new Set(d.oneOf.map((o) => typeOf(o, depth + 1)))].join('|');
 	if (d.type === 'array') return `${typeOf(d.items, depth + 1)}[]`;
 	if (d.properties) {
@@ -63,9 +73,8 @@ const out = [
 	'',
 	'ASSET TYPES',
 ];
-// Skip the deprecated types. The spec's own flag is set on html and title
-// only, but Shotstack also deprecates text, caption and shape — that list
-// lives in the agent skill, so read it from there rather than repeat it.
+// Skip the deprecated types. The schema flags most of them, and the agent skill
+// names two more (caption, shape), so take the union rather than repeat either.
 const skill = readFileSync(
 	new URL('../node_modules/@shotstack/cli/skills/shotstack/shared/agent-core.md', import.meta.url),
 	'utf8',
@@ -91,9 +100,8 @@ out.push(`  names: ${(S.Transition.properties.in.enum || []).join(' ')}`);
 // at runtime, so nobody maintains a second copy of Shotstack's advice.
 const body = out.join('\n');
 const ts = `// GENERATED FILE. Do not edit by hand.
-// Rebuild with: node scripts/build-reference.mjs <shotstack-openapi.json>
-// The API half comes from Shotstack's OpenAPI file. The house rules come from
-// scripts/house-rules.txt and are ours.
+// Rebuild with: node scripts/build-reference.mjs
+// Generated from the @shotstack/schemas package.
 
 export const RECIPE_REFERENCE = ${JSON.stringify(body)};
 `;

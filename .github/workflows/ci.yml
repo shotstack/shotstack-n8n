@@ -47,7 +47,7 @@ jobs:
         run: |
           node scripts/build-reference.mjs
           if ! git diff --quiet -- nodes/Shotstack/reference/recipeReference.ts; then
-            echo "recipeReference.ts is out of step with scripts/shotstack-openapi.json."
+            echo "recipeReference.ts is out of step with the @shotstack/schemas package."
             echo "Run: node scripts/build-reference.mjs   then commit the result."
             git diff --stat -- nodes/Shotstack/reference/recipeReference.ts
             exit 1

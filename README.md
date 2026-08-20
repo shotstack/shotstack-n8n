@@ -102,14 +102,20 @@ point an AI agent at.
 | **Edit** | The whole recipe: a `timeline` of tracks and clips, plus `output` settings. Paste one from the [docs](https://shotstack.io/docs/guide/) or [Studio](https://shotstack.io/studio/), or build it with an expression. |
 | **Callback URL** | Optional. Shotstack posts the finished render here — see [Waiting for a render](#waiting-for-a-render). |
 
-A recipe can also contain Shotstack's generative assets, which a template
-cannot add on its own:
+A recipe can also generate its own media, which a template cannot do on its own.
+Give an asset a `prompt` instead of a `src` and Shotstack makes it at render
+time:
 
-| Asset type | You give | You get |
+| Asset | You give | You get |
 | --- | --- | --- |
-| `text-to-image` | a prompt | an image |
-| `image-to-video` | an image and a prompt | that image, moving |
-| `text-to-speech` | text and a voice | narration |
+| `image` | a prompt | a generated image |
+| `video` | a prompt, optionally `inputSrc` | a generated clip, or a still brought to life |
+| `audio` | a prompt, and a voice for speech | narration or music |
+
+> The older `text-to-image`, `image-to-video` and `text-to-speech` asset types
+> still work, but Shotstack has deprecated them in favour of the above.
+
+Generation is billed per asset **even in the sandbox**, which is otherwise free.
 
 ### Render → Render From Template
 
