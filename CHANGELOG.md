@@ -9,9 +9,9 @@ First version. Published as `@shotstack/n8n-nodes-shotstack`.
 - **Shotstack** node with two resources.
 - **Reference → Get** hands a language model everything it needs to write a
   working recipe. Two halves, neither written by this node: the allowed values
-  are generated from Shotstack's OpenAPI file, and the craft is Shotstack's own
-  agent skill, vendored from `shotstack/shotstack-cli` at a pinned commit, so an
-  improvement Shotstack makes arrives without a rewrite here. The command-line
+  are generated from Shotstack's own `@shotstack/schemas` package, and the craft
+  is Shotstack's own agent skill, vendored from `shotstack/shotstack-cli` at a
+  pinned commit, so an improvement Shotstack makes arrives without a rewrite. The command-line
   parts of that skill are left out, because an AI inside n8n has no terminal.
   **Detail** chooses Core, Full or Everything. **Include Templates** adds the
   templates saved in the account.

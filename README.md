@@ -52,7 +52,7 @@ this before asking an AI to build a video.**
 
 | Field | Notes |
 | --- | --- |
-| **Detail** | `Core` (default, ~35,000 chars), `Full` (~116,000, adds ten topic guides), or `Everything` (adds Shotstack's whole documentation). |
+| **Detail** | `Core` (default, ~28,000 chars), `Full` (~109,000, adds ten topic guides), or `Everything` (adds Shotstack's whole documentation). |
 | **Include Templates** | On by default. Adds this account's templates, so an AI can pick one instead of writing a recipe from nothing. |
 
 Returns `reference`, one string holding two things, **neither of them written by
@@ -60,7 +60,7 @@ this node**:
 
 | Half | Where it comes from |
 | --- | --- |
-| Every asset type with its nested shape, and every allowed value | Generated from Shotstack's OpenAPI file by `scripts/build-reference.mjs` |
+| Every asset type with its nested shape, and every allowed value | Generated from Shotstack's own `@shotstack/schemas` package by `scripts/build-reference.mjs` |
 | How to write an edit that works and looks good | **Shotstack's own agent skill**, vendored from [`shotstack/shotstack-cli`](https://github.com/shotstack/shotstack-cli) by `scripts/vendor-skill.mjs` |
 
 The second half used to be a set of rules written here. It is not any more, so an

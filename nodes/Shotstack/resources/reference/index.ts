@@ -18,8 +18,8 @@ const FULL_DOCS_URL = 'https://shotstack.io/docs/guide/llms-full.txt';
 /**
  * Builds the answer a language model needs to write a working recipe.
  *
- * Two halves, neither of them written here. The allowed values are generated
- * from Shotstack's OpenAPI file, and the craft is Shotstack's own agent skill,
+ * Two halves, neither of them written here. The allowed values come from the
+ * @shotstack/schemas package, and the craft from Shotstack's own agent skill,
  * so an improvement Shotstack makes reaches this node without a rewrite.
  *
  * The request behind it is a real call to /templates. That proves the key
@@ -112,13 +112,13 @@ export const referenceDescription: INodeProperties[] = [
 				name: 'Core',
 				value: 'core',
 				description:
-					"About 35,000 characters. Every asset type with its nested shape and allowed values, plus Shotstack's core rules for writing an edit.",
+					"About 28,000 characters. Every asset type with its nested shape and allowed values, plus Shotstack's core rules for writing an edit.",
 			},
 			{
 				name: 'Full',
 				value: 'full',
 				description:
-					"About 116,000 characters. Adds Shotstack's ten topic guides: timeline, positioning, fonts, motion, captions, HTML, SVG, the asset library and troubleshooting.",
+					"About 109,000 characters. Adds Shotstack's ten topic guides: timeline, positioning, fonts, motion, captions, HTML, SVG, the asset library and troubleshooting.",
 			},
 			{
 				name: 'Everything',
