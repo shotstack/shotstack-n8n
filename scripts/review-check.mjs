@@ -235,7 +235,9 @@ const sweep = (label, pattern, files = readable) => {
 
 sweep('no TODO, FIXME or XXX left behind', /\b(TODO|FIXME|XXX)\b/);
 sweep('no scaffold text from the n8n starter', /to be completed|delete if not|your-node|n8n-nodes-starter|lorem ipsum/i);
-sweep('no local paths or usernames', /C:\\Users|\/Users\/[a-z]+\/|jesus/i);
+// A maintainer's name is legitimate; a path off someone's laptop is not.
+sweep('no paths off a developer machine', /C:\\Users|\/Users\/[a-z]+\/|\/home\/[a-z]+\//i);
+sweep('no personal email addresses', /\b[a-z0-9._%+-]+@shotstack\.io\b(?<!support@shotstack\.io)/i);
 sweep('no secrets', /sk_live|glsa_[A-Za-z0-9]|["'][A-Za-z0-9]{32,}["']\s*;?\s*\/\/\s*key/i);
 sweep('no trailing whitespace', /[ \t]+$/);
 

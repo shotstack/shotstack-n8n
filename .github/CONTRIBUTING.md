@@ -1,6 +1,63 @@
-# Maintaining this node
+# Maintaining the Shotstack n8n node
 
-For whoever owns this repository. Users do not need this file.
+**Owner:** Jesús, Growth Engineering. **Backup:** not named yet.
+Reach the owner through [an issue](https://github.com/shotstack/shotstack-n8n/issues)
+or support@shotstack.io.
+
+If you are covering while the owner is away, you need one of the three jobs
+below. Everything after them is background you can read later.
+
+---
+
+## Job 1 — someone filed an issue
+
+Most issues are one of four things. The render ID in the report is what settles
+it: it lets you look the job up in the Shotstack dashboard.
+
+| What they report | Usually means |
+| --- | --- |
+| "Shotstack has no render with that ID" | The credential Environment does not match the key. A Sandbox render is invisible to a Production key. |
+| "My webhook never fires" | They used Callback URL on Render Template. That field does not exist any more; the API accepts a callback there and discards it. Point them at Wait for the Render To Finish. |
+| Text renders as `{{ HEADLINE }}` | A partial merge. A template's merge list is replaced, not merged, so every placeholder must be sent. |
+| The node will not install | Almost always n8n Cloud, which installs verified nodes only. Self-hosted works today. |
+
+If it is a real defect: reproduce it with `npm run dev`, add a test that fails,
+fix it, and let it ride to the next quarterly release unless customers are
+blocked.
+
+## Job 2 — Shotstack changed the Edit schema
+
+Only needed when Shotstack ships a new asset type, property or model. Users get
+API changes without a release here, because the node posts the edit they wrote
+rather than modelling the schema as form fields. The one exception is the text
+the node hands an AI, which is baked in at build time.
+
+```bash
+npm install @shotstack/schemas@latest
+node scripts/build-reference.mjs
+npm run vendor:skill          # only if shotstack/shotstack-cli moved
+node scripts/review-check.mjs
+npm test
+```
+
+Commit the regenerated `nodes/Shotstack/reference/` files. CI fails if they do
+not match the installed schema package.
+
+## Job 3 — it is time to release
+
+```bash
+node scripts/review-check.mjs   # 32 checks, all must pass
+npm test
+npm run release
+```
+
+Then submit the new version in the n8n Creator Portal. Chase it in Discord
+`#community-nodes` if it sits for more than seven days.
+
+Full detail in [Releasing](#releasing) below. Read it once before your first
+release — there are three guards and one trap.
+
+---
 
 ## Setting up
 
@@ -20,15 +77,15 @@ build.
 npm run dev
 ```
 
-This starts n8n with the node loaded from `dist/`. It needs a real terminal —
-it draws a live display — and the first start takes several minutes. Your local
+Starts n8n with the node loaded from `dist/`. It needs a real terminal — it
+draws a live display — and the first start takes several minutes. Your local
 n8n, its credentials and its workflows persist in `~/.n8n`.
 
 Add a **Shotstack API** credential, set Environment to Sandbox, and paste a
 sandbox key. Sandbox renders are free and watermarked.
 
-`npm run dev` runs the compiled node, but it does not prove the package
-installs. Before a release, pack it and install the tarball into a clean n8n:
+`npm run dev` proves the node works. It does not prove the package installs.
+Before a release, pack it and install the tarball into a clean n8n:
 
 ```bash
 npm pack
@@ -39,119 +96,14 @@ npm pack
 
 1. Branch off `dev`.
 2. Make the change. Add or adjust a test if the change is behavioural.
-3. `node scripts/review-check.mjs` — 32 checks, all must pass.
-4. `npm test` and `npm run lint`.
-5. Open a pull request into `dev`. CI runs lint, build, tests and the
-   reference-drift check on every PR.
-6. `dev` merges into `main`, and only a tag on `main` publishes.
+3. `node scripts/review-check.mjs`, `npm test`, `npm run lint`.
+4. Open a pull request into `dev`. CI runs all of the above on every PR.
+5. `dev` merges into `main`, and only a tag on `main` publishes.
 
-Do not commit generated files by hand. `nodes/Shotstack/reference/` is written
-by the two scripts below, and CI fails if it does not match.
-
-## Reporting a problem
-
-Open an issue at
-[github.com/shotstack/shotstack-n8n/issues](https://github.com/shotstack/shotstack-n8n/issues).
-Include the n8n version, whether it is self-hosted or Cloud, the operation, the
-environment, and the render ID if there is one. A render ID lets Shotstack look
-up the exact job.
-
-## What it costs to keep
-
-About **3 hours a month**, in bursts rather than weekly. Most months are zero.
-One half-day per quarter does the release.
-
-| Work | How often | Hours |
-| --- | --- | --- |
-| Quarterly release: bump `@shotstack/schemas`, regenerate, test, tag, resubmit to n8n | 4 a year | 4–6 each |
-| Issue triage | ongoing | 1–2 a month, and it grows with installs |
-| Platform work: a Node.js floor, an n8n major | about once a year | 4–8 a year |
-
-Add **20–30 hours across the first quarter after launch**, when real users find
-real problems.
-
-For comparison, ElevenLabs runs a vendor-official n8n node with a funded team.
-They spend 14 commits and 2 releases a year on it.
-
-## Why Shotstack API releases do not force node work
-
-The node posts the edit the user wrote. It does not model the Edit schema as
-form fields. A new asset type, a new property or a new model reaches users
-through the node on the day Shotstack ships it, with no release here.
-
-Three things do force work:
-
-1. **A new operation we choose to expose.** A product decision, on our cadence.
-2. **The reference text.** `scripts/build-reference.mjs` and
-   `scripts/vendor-skill.mjs` bake Shotstack's schema and agent skill into the
-   package at build time. Both go stale until someone regenerates them. This is
-   the one place a Shotstack change needs a release here.
-3. **A platform change.** Rare. See the table above.
-
-## Why n8n releases rarely force node work
-
-- `n8nNodesApiVersion` is 1 and has never been 2.
-- The `n8n-workflow` peer dependency is `*`, so its 2.0 cost node authors nothing.
-- n8n's `BREAKING-CHANGES.md` covers the whole project history. The phrase
-  "community node" appears in it zero times.
-- Verified nodes may not have runtime dependencies, so there is no dependency
-  or CVE upkeep. This package has none.
-
-The tail risk is that n8n adds a rule later. It has done so once: from
-1 May 2026 every community node must publish from CI with provenance. This
-repository already does. Budget one surprise like that every year or two.
-
-## The node has to lag, by design
-
-Every new version goes back through n8n's review queue before n8n Cloud serves
-it. Ten days is normal and the feedback is thin. So batch changes quarterly.
-Do not try to match Shotstack's release cadence — it cannot be done, and the
-queue is the reason.
-
-One useful consequence: n8n Cloud serves the reviewed version, not npm's
-latest. A bad publish does not reach Cloud users on its own.
-
-## Handing this over
-
-Do these before submitting for verification, not after.
-
-1. **Name one owner and one backup.** Three hours a month owned by "the team"
-   becomes zero hours a month. This is the whole thing.
-2. **Use a role account for the n8n Creator Portal.** Verification ties the npm
-   maintainer to the GitHub repository owner. If the person who submitted it
-   leaves, the verification is stranded and cannot be moved.
-3. **Configure npm Trusted Publishing** against this repository and
-   `publish.yml`, so no long-lived token exists to rotate or lose.
-4. **Add one line to the API team's definition of done:** does this change the
-   Edit schema? If yes, tag this repository for the next quarterly release.
-5. **Route the repository's issues** to the named owner. `package.json` already
-   points `bugs.url` here.
-6. **Agree a kill line now.** If installs stay under an agreed number after
-   twelve months, deprecate on purpose with a final release and a README notice.
-   n8n never forces this. Stale nodes sit on npm for years.
-
-## Reviewing before you release
-
-```bash
-node scripts/review-check.mjs
-```
-
-Nineteen checks in one pass: build, lint, tests, the n8n verification
-requirements, a clean history, that every operation value is a real
-`operationId` and every display name matches the spec summary, that the two
-operations with no spec entry say so, that an AI agent gets a real tool
-description, and that the README has not started restating the API again.
-
-It prints PASS or FAIL per row and exits non-zero on any FAIL. It does not
-cover the one thing that matters most: a real render through the node.
+Do not edit `nodes/Shotstack/reference/` by hand. It is generated, and CI fails
+if it drifts from the schema package.
 
 ## Releasing
-
-```bash
-node scripts/review-check.mjs
-npm test        # the release command does NOT run these
-npm run release
-```
 
 `npm run release` lints, builds, asks for the version, commits, tags and pushes.
 The tag then starts `publish.yml`, which publishes to npm.
@@ -176,9 +128,9 @@ ignored by git, so it cannot overwrite it.
 ### The verification scan runs after publish, not before
 
 `npx @n8n/scan-community-package <name>` takes a published package name. It
-reads the package's npm provenance, fetches the source repository the
-provenance attests to, and lints that source. So it cannot run against a local
-checkout, and a failure can only be found once a version is on npm.
+reads the package's npm provenance, fetches the source repository the provenance
+attests to, and lints that. So it cannot run against a local checkout, and a
+failure can only be found once a version is on npm.
 
 Publish `0.1.0-rc.1` first. A prerelease tag goes to the `next` dist-tag, so a
 scan failure never reaches anyone who runs a plain install. Scan the release
@@ -210,11 +162,11 @@ that code into a `.ts` file without expecting `no-console` to fire.
 3. **`publish.yml` keeps its name.** The filename is part of the trusted
    publisher entry. Rename it and every tag fails silently.
 
-### If a bad version reaches npm
+### Removing or deprecating a version
 
 Within 72 hours `npm unpublish @shotstack/n8n-nodes-shotstack@<version>` removes
-it. Use it only if the version is dangerous: it breaks anyone who already
-installed, and npm will not let that version number be reused.
+it. Use it only for a version that is unsafe to install: it breaks anyone who
+already installed, and npm will not let that version number be reused.
 
 This is not a rollback. Self-hosted n8n installs are already on disk and npm
 cannot recall them. Publishing a fixed version is the real remedy.
@@ -226,6 +178,59 @@ npm deprecate @shotstack/n8n-nodes-shotstack@<version> "Use <next version>. <rea
 ```
 
 The package name is permanent either way. Unpublishing does not free it.
+
+---
+
+## Background: why this does not need much work
+
+About **3 hours a month**, in bursts. Most months are zero. One half-day per
+quarter does the release. Add 20–30 hours across the first quarter after launch,
+when real users find real problems.
+
+| Work | How often | Hours |
+| --- | --- | --- |
+| Quarterly release, and resubmit to n8n | 4 a year | 4–6 each |
+| Issue triage | ongoing | 1–2 a month, and it grows with installs |
+| Platform work: a Node.js floor, an n8n major | about once a year | 4–8 a year |
+
+For comparison, ElevenLabs runs a vendor-official n8n node with a funded team.
+They spend 14 commits and 2 releases a year on it.
+
+**Shotstack API releases mostly do not reach the node.** It posts the edit the
+user wrote. A new asset type, property or model works the day Shotstack ships
+it. Only Job 2 above needs a release.
+
+**n8n releases rarely reach it either.** `n8nNodesApiVersion` is 1 and has never
+been 2. The `n8n-workflow` peer dependency is `*`, so its 2.0 cost node authors
+nothing. n8n's `BREAKING-CHANGES.md` covers the whole project history and the
+phrase "community node" appears in it zero times. Verified nodes may not have
+runtime dependencies, so there is no CVE upkeep, and this package has none.
+
+The tail risk is n8n adding a rule later. It has done so once: from 1 May 2026
+every community node must publish from CI with provenance. This repository
+already does. Budget one surprise like that every year or two.
+
+**The node has to lag, by design.** Every new version goes back through n8n's
+review queue before n8n Cloud serves it. Ten days is normal. Batch changes
+quarterly; matching Shotstack's cadence is not possible and the queue is why.
+One useful consequence: n8n Cloud serves the reviewed version, not npm's latest,
+so a bad publish does not reach Cloud users on its own.
+
+## Still to settle
+
+1. **Name a backup.** Three hours a month owned by one person with no cover is
+   three hours a month that stops when they are away.
+2. **Use a role account for the n8n Creator Portal.** Verification ties the npm
+   maintainer to the GitHub repository owner. If the person who submitted it
+   leaves, the verification is stranded and cannot be moved. Fix this before
+   submitting, not after.
+3. **Configure npm Trusted Publishing** against this repository and
+   `publish.yml`, so no long-lived token exists to rotate or lose.
+4. **Add one line to the API team's definition of done:** does this change the
+   Edit schema? If yes, tag this repository for the next quarterly release.
+5. **Agree a kill line.** If installs stay under an agreed number after twelve
+   months, deprecate on purpose with a final release and a README notice. n8n
+   never forces this. Stale nodes sit on npm for years.
 
 ## Regenerating the embedded reference
 
