@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 
 const showOnly = {
-	resource: ['render'],
+	resource: ['asset'],
 	operation: ['download'],
 };
 
@@ -38,7 +38,7 @@ const explainMissingUrl: PreSendAction = async function (
 	let description: string;
 
 	if (status === 'failed') {
-		message = 'The render failed, so there is no video to download';
+		message = 'The render failed, so there is no file to download';
 		description = renderError
 			? `Shotstack reported: ${renderError}`
 			: 'Shotstack gave no reason. Open the render in the Shotstack dashboard.';
@@ -49,11 +49,11 @@ const explainMissingUrl: PreSendAction = async function (
 	} else if (item.attributes !== undefined) {
 		message = 'The previous step returned the full response, not a plain URL';
 		description =
-			'Turn Simplify on in Get Hosted Asset, or set Video URL to {{ $json.attributes.url }}.';
+			'Turn Simplify on in Get Asset by Render ID, or set File URL to {{ $json.attributes.url }}.';
 	} else {
-		message = 'No video URL was supplied';
+		message = 'No file URL was supplied';
 		description =
-			'Put this step after Get Hosted Asset, or type a URL into the Video URL field.';
+			'Put this step after Get Asset by Render ID, or type a URL into the File URL field.';
 	}
 
 	throw new NodeOperationError(this.getNode(), message, {
@@ -67,13 +67,13 @@ const explainMissingUrl: PreSendAction = async function (
  *
  * The built-in binaryData action cannot set a file name or a media type.
  */
-const attachVideoFile: PostReceiveAction = async function (
+const attachDownloadedFile: PostReceiveAction = async function (
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ) {
 	const chosenName = String(this.getNodeParameter('fileName', '') ?? '').trim();
-	const sourceUrl = String(this.getNodeParameter('videoUrl', '') ?? '');
+	const sourceUrl = String(this.getNodeParameter('fileUrl', '') ?? '');
 	const nameInUrl = sourceUrl.split('?')[0].split('/').pop();
 	const fileName = chosenName || nameInUrl || 'video.mp4';
 
@@ -89,7 +89,7 @@ const attachVideoFile: PostReceiveAction = async function (
 		buffer = Buffer.from(body as ArrayBuffer);
 	} else {
 		throw new NodeOperationError(this.getNode(), 'The download did not return a file', {
-			description: `Expected bytes and got ${typeof body}. The URL may point at a web page rather than a video.`,
+			description: `Expected bytes and got ${typeof body}. The URL may point at a web page rather than a file.`,
 			itemIndex: this.getItemIndex(),
 		});
 	}
@@ -100,23 +100,23 @@ const attachVideoFile: PostReceiveAction = async function (
 		contentType || undefined,
 	);
 
-	// The body is the video, so it makes a poor json payload. Carry the incoming
+	// The body is the file, so it makes a poor json payload. Carry the incoming
 	// fields through instead, so a later step can read {{ $json.id }}.
 	const incoming = (this.getInputData()?.json ?? {}) as IDataObject;
 	return items.map(() => ({ json: incoming, binary: { data: binary } }));
 };
 
-export const renderDownloadDescription: INodeProperties[] = [
+export const downloadDescription: INodeProperties[] = [
 	{
-		displayName: 'Video URL',
-		name: 'videoUrl',
+		displayName: 'File URL',
+		name: 'fileUrl',
 		type: 'string',
 		required: true,
 		default: '={{ $json.url }}',
 		placeholder: 'https://cdn.shotstack.io/...',
 		displayOptions: { show: showOnly },
 		description:
-			'The link to the finished video. The default reads the URL from the previous step, so putting this straight after Get Hosted Asset needs no setup.',
+			'The link to the finished file. The default reads the URL from the previous step, so putting this straight after Get Asset by Render ID needs no setup.',
 		routing: {
 			send: {
 				preSend: [explainMissingUrl],
@@ -132,7 +132,7 @@ export const renderDownloadDescription: INodeProperties[] = [
 				skipSslCertificateValidation: false,
 			},
 			output: {
-				postReceive: [attachVideoFile],
+				postReceive: [attachDownloadedFile],
 			},
 		},
 	},

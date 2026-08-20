@@ -9,19 +9,19 @@ import type {
 
 const showOnly = {
 	resource: ['render'],
-	operation: ['renderFromJson'],
+	operation: ['postRender'],
 };
 
 const SAMPLE_EDIT =
 	'{"timeline":{"tracks":[{"clips":[{"asset":{"type":"text","text":"Hello"},"start":0,"length":4}]}]},"output":{"format":"mp4","size":{"width":1080,"height":1920}}}';
 
 /**
- * Builds the request body from the recipe and the callback.
+ * Builds the request body from the edit and the callback.
  *
  * Keep this out of a routing expression. An expression that throws fails the
  * whole node rather than the item, so Continue On Fail never sees it and
  * earlier renders are billed with no output. A routed blank callback also
- * overwrites one the user set inside the recipe, so their webhook never fires.
+ * overwrites one the user set inside the edit, so their webhook never fires.
  */
 const buildRenderBody: PreSendAction = async function (
 	this: IExecuteSingleFunctions,
@@ -34,8 +34,7 @@ const buildRenderBody: PreSendAction = async function (
 		const text = raw.trim();
 		if (!text) {
 			throw new NodeOperationError(this.getNode(), 'The Edit field is empty', {
-				description:
-					'Paste a Shotstack recipe, or use Render From Template if you have one saved.',
+				description: 'Paste a Shotstack edit, or use Render Template if you have one saved.',
 				itemIndex: this.getItemIndex(),
 			});
 		}
@@ -56,7 +55,7 @@ const buildRenderBody: PreSendAction = async function (
 	return requestOptions;
 };
 
-export const renderFromJsonDescription: INodeProperties[] = [
+export const postRenderDescription: INodeProperties[] = [
 	{
 		displayName: 'Edit',
 		name: 'edit',
@@ -69,7 +68,7 @@ export const renderFromJsonDescription: INodeProperties[] = [
 		typeOptions: { rows: 12 },
 		displayOptions: { show: showOnly },
 		description:
-			'The full Shotstack recipe: a timeline of tracks and clips, plus output settings. Paste one from the docs or Studio, or use the Reference action to get one written. Keep this field in fixed mode — in expression mode n8n evaluates Shotstack merge placeholders such as {{ HEADLINE }} and replaces them with nothing.',
+			'The Shotstack edit: a timeline of tracks and clips, plus output settings. Paste one from the docs or Studio, or use Reference → Get Reference to have an AI write one. Keep this field in fixed mode — in expression mode n8n evaluates Shotstack merge placeholders such as {{ HEADLINE }} and replaces them with nothing.',
 		routing: {
 			send: { preSend: [buildRenderBody] },
 		},
@@ -82,6 +81,6 @@ export const renderFromJsonDescription: INodeProperties[] = [
 		placeholder: 'https://your-n8n/webhook/shotstack-done',
 		displayOptions: { show: showOnly },
 		description:
-			'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling. Leave blank to keep whatever callback the recipe already sets.',
+			'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling. Leave blank to keep whatever callback the edit already sets.',
 	},
 ];

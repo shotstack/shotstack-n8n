@@ -8,12 +8,12 @@ import type {
 	INodeProperties,
 	PostReceiveAction,
 } from 'n8n-workflow';
-import { isRenderId } from './renderId';
+import { isRenderId } from '../renderId';
 import { USER_AGENT } from '../../userAgent';
 
 const showOnly = {
-	resource: ['render'],
-	operation: ['getAssets'],
+	resource: ['asset'],
+	operation: ['getAssetByRenderId'],
 };
 
 const POLL_GAP_MS = 3000;
@@ -31,7 +31,7 @@ const EXTRA_FILES = /-(poster|thumb|thumbnail)\.[a-z0-9]+$/i;
  * Drops the poster and thumbnail, so the next step gets the rendered file.
  *
  * One render hosts several files. Without this the workflow runs once per
- * file, and Download Video saves a JPEG named like a video.
+ * file, and Download File saves a JPEG named like a video.
  */
 const keepMainFile: PostReceiveAction = async function (
 	this: IExecuteSingleFunctions,
@@ -231,7 +231,7 @@ const waitForHostedAsset = async function (
 	return describeMissingAsset.call(this, check.known, check.status, check.error, renderId);
 };
 
-export const renderGetAssetsDescription: INodeProperties[] = [
+export const getAssetByRenderIdDescription: INodeProperties[] = [
 	{
 		displayName: 'Render ID',
 		name: 'renderId',

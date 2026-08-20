@@ -1,9 +1,7 @@
 import type { INodeProperties, PostReceiveAction } from 'n8n-workflow';
-import { renderFromJsonDescription } from './renderFromJson';
-import { renderFromTemplateDescription } from './renderFromTemplate';
-import { renderGetDescription } from './get';
-import { renderGetAssetsDescription } from './getAssets';
-import { renderDownloadDescription } from './download';
+import { postRenderDescription } from './postRender';
+import { postTemplateRenderDescription } from './postTemplateRender';
+import { getRenderDescription } from './getRender';
 
 const showOnlyForRender = {
 	resource: ['render'],
@@ -11,21 +9,16 @@ const showOnlyForRender = {
 
 // Every Edit API response is wrapped as { success, message, response }.
 // Unwrapping it lets workflows read {{$json.id}} rather than {{$json.response.id}}.
-const unwrapResponse: PostReceiveAction[] = [
+export const unwrapResponse: PostReceiveAction[] = [
 	{
 		type: 'rootProperty',
 		properties: { property: 'response' },
 	},
 ];
 
-// The Serve API uses a different envelope: { data: [ { type, attributes } ] }.
-const unwrapServeData: PostReceiveAction[] = [
-	{
-		type: 'rootProperty',
-		properties: { property: 'data' },
-	},
-];
-
+// Operation names and values come from Shotstack's OpenAPI spec: the display
+// name is the operation summary, the value is the operationId. A reader of the
+// API reference can then guess this dropdown, and the reverse.
 export const renderDescription: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -35,12 +28,11 @@ export const renderDescription: INodeProperties[] = [
 		displayOptions: { show: showOnlyForRender },
 		options: [
 			{
-				name: 'Render From Recipe (Best for AI)',
-				// The stored value stays renderFromJson so saved workflows keep working.
-				value: 'renderFromJson',
+				name: 'Render Asset',
+				value: 'postRender',
 				description:
-					'Render a whole video recipe. The only action with no ceiling: any number of clips, any asset type, and the generative assets. Best target for an AI agent.',
-				action: 'Render a video from a recipe',
+					'Render a video or image from a Shotstack edit. This is the general render method, and the only one with no ceiling: any number of clips, any asset type, and the generative assets. Point an AI agent here.',
+				action: 'Render asset',
 				routing: {
 					request: {
 						method: 'POST',
@@ -50,10 +42,10 @@ export const renderDescription: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Render From Template',
-				value: 'renderFromTemplate',
+				name: 'Render Template',
+				value: 'postTemplateRender',
 				description: 'Render a saved template, filling in its placeholders',
-				action: 'Render a video from a template',
+				action: 'Render template',
 				routing: {
 					request: {
 						method: 'POST',
@@ -63,10 +55,11 @@ export const renderDescription: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get',
-				value: 'get',
-				description: 'Check the status of a render. Returns a temporary URL that expires.',
-				action: 'Get a render',
+				name: 'Get Render Status',
+				value: 'getRender',
+				description:
+					'Check the status of a render, and get its temporary URL. The URL expires, so use Asset → Get Asset by Render ID for one to keep.',
+				action: 'Get render status',
 				routing: {
 					request: {
 						method: 'GET',
@@ -74,35 +67,10 @@ export const renderDescription: INodeProperties[] = [
 					output: { postReceive: unwrapResponse },
 				},
 			},
-			{
-				name: 'Download Video',
-				value: 'download',
-				description: 'Fetch the finished video as a file, ready for the next step',
-				action: 'Download the video file',
-				routing: {
-					request: {
-						method: 'GET',
-					},
-				},
-			},
-			{
-				name: 'Get Hosted Asset',
-				value: 'getAssets',
-				description: 'Get the permanent CDN URL for a finished render',
-				action: 'Get the hosted asset for a render',
-				routing: {
-					request: {
-						method: 'GET',
-					},
-					output: { postReceive: unwrapServeData },
-				},
-			},
 		],
-		default: 'renderFromJson',
+		default: 'postRender',
 	},
-	...renderFromJsonDescription,
-	...renderFromTemplateDescription,
-	...renderGetDescription,
-	...renderGetAssetsDescription,
-	...renderDownloadDescription,
+	...postRenderDescription,
+	...postTemplateRenderDescription,
+	...getRenderDescription,
 ];

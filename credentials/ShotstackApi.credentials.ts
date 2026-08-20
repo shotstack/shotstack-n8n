@@ -54,7 +54,7 @@ export class ShotstackApi implements ICredentialType {
 	/**
 	 * Sends the key to api.shotstack.io and nowhere else.
 	 *
-	 * Download Video fetches whatever address the previous step produced. A
+	 * Download File fetches whatever address the previous step produced. A
 	 * blanket header would hand the key to that host. Only the API needs a key;
 	 * cdn.shotstack.io serves public files.
 	 */

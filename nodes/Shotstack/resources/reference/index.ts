@@ -86,11 +86,11 @@ export const referenceDescription: INodeProperties[] = [
 		displayOptions: { show: showOnly },
 		options: [
 			{
-				name: 'Get',
-				value: 'get',
+				name: 'Get Reference',
+				value: 'getReference',
 				description:
 					"Get everything an AI needs to write a recipe: every asset type and allowed value, plus Shotstack's own rules for making a video that works and looks good. Give this to an AI before asking it to write a recipe.",
-				action: 'Get the recipe reference',
+				action: 'Get reference',
 				routing: {
 					request: {
 						method: 'GET',
@@ -100,14 +100,14 @@ export const referenceDescription: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'get',
+		default: 'getReference',
 	},
 	{
 		displayName: 'Detail',
 		name: 'detail',
 		type: 'options',
 		default: 'core',
-		displayOptions: { show: { ...showOnly, operation: ['get'] } },
+		displayOptions: { show: { ...showOnly, operation: ['getReference'] } },
 		description:
 			'How much to hand the model. Core is enough to write a good recipe. The larger settings add depth on specific subjects, and need a model with a large context window',
 		options: [
@@ -136,7 +136,7 @@ export const referenceDescription: INodeProperties[] = [
 		name: 'includeTemplates',
 		type: 'boolean',
 		default: true,
-		displayOptions: { show: { ...showOnly, operation: ['get'] } },
+		displayOptions: { show: { ...showOnly, operation: ['getReference'] } },
 		description:
 			'Whether to list the templates saved in this account alongside the reference, so an AI can choose one instead of writing a recipe from nothing',
 	},

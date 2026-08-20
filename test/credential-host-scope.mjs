@@ -1,5 +1,5 @@
 // The credential must send the API key to api.shotstack.io and nowhere else.
-// Download Video fetches whatever address the previous step produced, so a
+// Download File fetches whatever address the previous step produced, so a
 // blanket header would hand the user's key to a stranger.
 //
 //   npm test
@@ -16,7 +16,7 @@ const cases = [
 	['Edit API', { baseURL: 'https://api.shotstack.io/edit/stage', url: '/render' }, true],
 	['Serve API', { baseURL: 'https://api.shotstack.io/serve/stage', url: '/assets/render/x' }, true],
 	['Ingest API', { baseURL: 'https://api.shotstack.io/ingest/stage', url: '/sources' }, true],
-	// Download Video sets baseURL to an empty string, so the host is in url.
+	// Download File sets baseURL to an empty string, so the host is in url.
 	['the public CDN', { baseURL: '', url: 'https://cdn.shotstack.io/au/stage/o/r.mp4' }, false],
 	['another subdomain', { baseURL: '', url: 'https://docs.shotstack.io/x' }, false],
 	['a third party', { baseURL: '', url: 'https://evil.example.com/collect.mp4' }, false],

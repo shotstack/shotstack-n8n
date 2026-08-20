@@ -6,12 +6,12 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { requireRenderId } from './renderId';
+import { requireRenderId } from '../renderId';
 import { USER_AGENT } from '../../userAgent';
 
 const showOnly = {
 	resource: ['render'],
-	operation: ['get'],
+	operation: ['getRender'],
 };
 
 const POLL_GAP_MS = 5000;
@@ -121,14 +121,14 @@ const waitForRender = async function (
 	});
 };
 
-export const renderGetDescription: INodeProperties[] = [
+export const getRenderDescription: INodeProperties[] = [
 	{
 		displayName: 'Render ID',
 		name: 'renderId',
 		type: 'string',
 		required: true,
 		// Both render operations return the id as "id", so this makes the chain
-		// Render -> Get work with no setup, the way Download Video already does.
+		// Render -> Get Render Status work with no setup, as Download File does.
 		default: '={{ $json.id }}',
 		placeholder: '4a37ef85-b4d1-4b4a-90be-6515290c5091',
 		displayOptions: { show: showOnly },

@@ -117,7 +117,7 @@ const header = [
 	'   current, the reference wins. It is generated from the schema; the rules are',
 	'   pinned text and can lag. The REPLACED list above is the authority.',
 	'',
-	'Put the JSON you produce in the Edit field of Render From Recipe.',
+	'Put the JSON you produce in the Edit field of the Render Asset operation.',
 ].join('\n');
 
 const ts = `// GENERATED FILE. Do not edit by hand.
