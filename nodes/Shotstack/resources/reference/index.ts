@@ -91,7 +91,7 @@ export const referenceDescription: INodeProperties[] = [
 				name: 'Get Reference',
 				value: 'getReference',
 				description:
-					"Get everything an AI needs to write an edit: every asset type and allowed value, plus Shotstack's own rules for making a video that works and looks good. Give this to an AI before asking it to write one.",
+					"Get everything an AI needs to write an edit: every asset type and allowed value, plus Shotstack's own rules for making a video that works and looks good. Give this to an AI before asking it to write one. The node carries this text, so it calls no Shotstack operation beyond listing your templates.",
 				action: 'Get the schema and rules for writing an edit',
 				routing: {
 					request: {
