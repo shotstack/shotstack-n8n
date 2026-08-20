@@ -8,10 +8,13 @@ First version. Published as `@shotstack/n8n-nodes-shotstack`.
 
 - **Shotstack** node with two resources.
 - **Reference → Get** hands a language model everything it needs to write a
-  working recipe: every asset type with its nested shape, every allowed value,
-  and the house rules that decide whether a render looks good. **Detail: Full**
-  also fetches Shotstack's guide for language models. **Include Templates** adds
-  the templates saved in the account.
+  working recipe. Two halves, neither written by this node: the allowed values
+  are generated from Shotstack's OpenAPI file, and the craft is Shotstack's own
+  agent skill, vendored from `shotstack/shotstack-cli` at a pinned commit, so an
+  improvement Shotstack makes arrives without a rewrite here. The command-line
+  parts of that skill are left out, because an AI inside n8n has no terminal.
+  **Detail** chooses Core, Full or Everything. **Include Templates** adds the
+  templates saved in the account.
 - **Render → Render From Recipe (Best for AI)** — `POST /render` with a whole
   Shotstack recipe. The only operation with no ceiling: any number of clips, any
   asset type, and the generative assets.

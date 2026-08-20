@@ -1,0 +1,48 @@
+# Watches Shotstack's agent skill, which this node vendors.
+#
+# Two different questions, and only one of them is an error.
+#
+# Has the skill MOVED? A rename, a new default branch or a reorganised folder
+# breaks the vendoring script silently, and nobody finds out until someone tries
+# to refresh. That fails this job.
+#
+# Has the skill CHANGED? The pin is deliberate, so being behind is normal. This
+# reports it so the pin is a decision someone makes, rather than something that
+# quietly rots. It does not fail.
+
+name: Skill freshness
+
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Monday morning
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The skill must still be where we vendor it from
+        run: |
+          for path in shared/agent-core.md references/fonts.md references/motion.md; do
+            url="https://raw.githubusercontent.com/shotstack/shotstack-cli/master/skills/shotstack/$path"
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$url")
+            if [ "$code" != "200" ]; then
+              echo "::error::$path returned $code. The skill has moved; scripts/vendor-skill.mjs needs updating."
+              exit 1
+            fi
+            echo "ok $path"
+          done
+
+      - name: Report whether the pin is behind
+        run: |
+          pinned=$(grep -oE "^const PIN = '[0-9a-f]{40}'" scripts/vendor-skill.mjs | grep -oE '[0-9a-f]{40}')
+          latest=$(curl -s https://api.github.com/repos/shotstack/shotstack-cli/commits/master | grep -m1 '"sha"' | cut -d'"' -f4)
+          echo "pinned $pinned"
+          echo "master $latest"
+          if [ "$pinned" != "$latest" ]; then
+            echo "::notice::Shotstack's skill has moved on. To take the update: npm run vendor:skill -- --latest, set PIN, re-run without --latest, commit both files."
+          else
+            echo "The pin is current."
+          fi

@@ -52,16 +52,25 @@ this before asking an AI to build a video.**
 
 | Field | Notes |
 | --- | --- |
-| **Detail** | `Compact` (default) or `Full`. See below. |
+| **Detail** | `Core` (default, ~35,000 chars), `Full` (~116,000, adds ten topic guides), or `Everything` (adds Shotstack's whole documentation). |
 | **Include Templates** | On by default. Adds this account's templates, so an AI can pick one instead of writing a recipe from nothing. |
 
-Returns `reference`, a single string of about 13,700 characters holding every
-asset type with its nested shape, every allowed value, and the rules that decide
-whether a render looks good rather than merely succeeds.
+Returns `reference`, one string holding two things, **neither of them written by
+this node**:
 
-The API half is generated from Shotstack's OpenAPI file by
-`scripts/build-reference.mjs`, so it cannot drift. The house rules beside it are
-in `scripts/house-rules.txt` and follow Shotstack's own agent skill.
+| Half | Where it comes from |
+| --- | --- |
+| Every asset type with its nested shape, and every allowed value | Generated from Shotstack's OpenAPI file by `scripts/build-reference.mjs` |
+| How to write an edit that works and looks good | **Shotstack's own agent skill**, vendored from [`shotstack/shotstack-cli`](https://github.com/shotstack/shotstack-cli) by `scripts/vendor-skill.mjs` |
+
+The second half used to be a set of rules written here. It is not any more, so an
+improvement Shotstack makes to its own guidance reaches this node without anyone
+rewriting it. The output carries `rulesSource`, naming the exact upstream commit
+the rules came from.
+
+The command-line parts of that skill are left out. They tell the reader to set
+environment variables and run shell commands, and an AI inside an n8n workflow
+has no terminal.
 
 To check a recipe before you render it, without an API key and without spending
 credits:
@@ -71,15 +80,14 @@ npm install -g @shotstack/cli
 shotstack validate recipe.json
 ```
 
-**Detail: Full** also fetches
+**Detail: Everything** also fetches
 [Shotstack's guide for language models](https://shotstack.io/docs/guide/llms-full.txt),
-about 271,000 characters with 213 worked examples. The two cover different
-ground: the guide teaches by example, the compact reference is the exhaustive
-list of allowed values. Effect names, transition names and the file-extension
-lists appear only in the compact half.
+about 271,000 characters with 213 worked examples. It teaches by example, where
+the rest is reference. If that fetch fails the step still succeeds, with
+`documentationError` explaining what is missing.
 
-Use Full with a model that has a large context window. If the fetch fails the
-step still succeeds, with `documentationError` explaining what is missing.
+Everything else is embedded, so `Core` and `Full` make no network call beyond
+the one that lists your templates.
 
 
 

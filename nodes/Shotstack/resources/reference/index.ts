@@ -6,6 +6,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { RECIPE_REFERENCE } from '../../reference/recipeReference';
+import { SKILL_CORE, SKILL_HEADER, SKILL_SOURCE, SKILL_TOPICS } from '../../reference/skill';
 
 const showOnly = {
 	resource: ['reference'],
@@ -17,6 +18,10 @@ const FULL_DOCS_URL = 'https://shotstack.io/docs/guide/llms-full.txt';
 /**
  * Builds the answer a language model needs to write a working recipe.
  *
+ * Two halves, neither of them written here. The allowed values are generated
+ * from Shotstack's OpenAPI file, and the craft is Shotstack's own agent skill,
+ * so an improvement Shotstack makes reaches this node without a rewrite.
+ *
  * The request behind it is a real call to /templates. That proves the key
  * works, and it names the templates this account can already render.
  */
@@ -26,7 +31,7 @@ const buildReference = async function (
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const includeTemplates = this.getNodeParameter('includeTemplates', true) as boolean;
-	const detail = this.getNodeParameter('detail', 'compact') as string;
+	const detail = this.getNodeParameter('detail', 'core') as string;
 
 	const body = (response.body ?? {}) as IDataObject;
 	const payload = (body.response ?? {}) as IDataObject;
@@ -35,11 +40,17 @@ const buildReference = async function (
 		name: t.name,
 	}));
 
-	const json: IDataObject = { reference: RECIPE_REFERENCE };
+	const parts = [RECIPE_REFERENCE, SKILL_HEADER, SKILL_CORE];
+	if (detail === 'full' || detail === 'everything') parts.push(SKILL_TOPICS);
 
-	if (detail === 'full') {
+	const json: IDataObject = {
+		reference: parts.join('\n\n'),
+		// So a reader can tell which version of Shotstack's rules they got.
+		rulesSource: SKILL_SOURCE,
+	};
+
+	if (detail === 'everything') {
 		try {
-			// Fetched, not embedded, so it stays current.
 			const docs = (await this.helpers.httpRequest({
 				method: 'GET',
 				url: FULL_DOCS_URL,
@@ -50,9 +61,11 @@ const buildReference = async function (
 		} catch {
 			// The reference alone is still useful. Report the gap, do not fail.
 			json.documentation = '';
-			json.documentationError = `Could not reach ${FULL_DOCS_URL}. The compact reference above is still complete for asset types and allowed values.`;
+			json.documentationError = `Could not reach ${FULL_DOCS_URL}. The rules above are complete without it.`;
 		}
 	}
+
+	json.referenceChars = String(json.reference).length;
 
 	if (includeTemplates) {
 		json.templates = templates;
@@ -73,7 +86,7 @@ export const referenceDescription: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description:
-					'Get the recipe reference: every asset type, every allowed value, and the rules that make a render look good. Give this to an AI before asking it to write a recipe.',
+					"Get everything an AI needs to write a recipe: every asset type and allowed value, plus Shotstack's own rules for making a video that works and looks good. Give this to an AI before asking it to write a recipe.",
 				action: 'Get the recipe reference',
 				routing: {
 					request: {
@@ -90,22 +103,28 @@ export const referenceDescription: INodeProperties[] = [
 		displayName: 'Detail',
 		name: 'detail',
 		type: 'options',
-		default: 'compact',
+		default: 'core',
 		displayOptions: { show: { ...showOnly, operation: ['get'] } },
 		description:
-			'How much to hand the model. Compact is enough to write a valid recipe. Full adds Shotstack\'s whole guide, which teaches by example but is large',
+			'How much to hand the model. Core is enough to write a good recipe. The larger settings add depth on specific subjects, and need a model with a large context window',
 		options: [
 			{
-				name: 'Compact',
-				value: 'compact',
+				name: 'Core',
+				value: 'core',
 				description:
-					'About 13,700 characters. Every asset type with its nested shape, every allowed value, and the house rules.',
+					"About 35,000 characters. Every asset type with its nested shape and allowed values, plus Shotstack's core rules for writing an edit.",
 			},
 			{
 				name: 'Full',
 				value: 'full',
 				description:
-					"Adds Shotstack's guide for language models, about 271,000 characters with 213 worked examples. Use with a model that has a large context window.",
+					"About 116,000 characters. Adds Shotstack's ten topic guides: timeline, positioning, fonts, motion, captions, HTML, SVG, the asset library and troubleshooting.",
+			},
+			{
+				name: 'Everything',
+				value: 'everything',
+				description:
+					"Adds Shotstack's whole documentation, about 271,000 more characters with 213 worked examples. Fetched when the step runs.",
 			},
 		],
 	},

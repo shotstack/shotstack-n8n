@@ -4,8 +4,10 @@
 //   node scripts/build-reference.mjs [path-to-openapi.json]
 //
 // Shotstack publishes no stable address for the spec, so a copy sits beside
-// this script and is the default. Replace that copy when the API changes. The
-// house rules beside it are ours, not the API's.
+// this script and is the default. Replace that copy when the API changes.
+//
+// This covers what is allowed. How to write a good edit comes from Shotstack's
+// agent skill instead — see scripts/vendor-skill.mjs.
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const specPath = process.argv[2] ?? new URL('./shotstack-openapi.json', import.meta.url);
@@ -84,14 +86,9 @@ out.push(line('', S.Output, ['format', 'size', 'resolution', 'aspectRatio', 'fps
 out.push('  size = { "width": int, "height": int }');
 out.push('', 'TRANSITION  { "in": <name>, "out": <name> }');
 out.push(`  names: ${(S.Transition.properties.in.enum || []).join(' ')}`);
-// Normalise the line endings. Windows checks this file out with CRLF, so the
-// carriage returns would reach the model and fail the CI drift check on Linux.
-const CARRIAGE_RETURNS = /\r\n?/g;
-const houseRules = readFileSync(new URL('./house-rules.txt', import.meta.url), 'utf8')
-	.replace(CARRIAGE_RETURNS, '\n')
-	.trim();
-out.push('', houseRules);
-
+// The craft half used to be a hand-written file appended here. It is now
+// Shotstack's own agent skill, vendored by scripts/vendor-skill.mjs and joined
+// at runtime, so nobody maintains a second copy of Shotstack's advice.
 const body = out.join('\n');
 const ts = `// GENERATED FILE. Do not edit by hand.
 // Rebuild with: node scripts/build-reference.mjs <shotstack-openapi.json>
