@@ -306,10 +306,10 @@ Tested against n8n 2.35. Requires Node.js 20.19 or later; n8n 2.x itself asks fo
 
 ## Contributing
 
-Setup, how to run the node in a real n8n, and the release process are in
-[CONTRIBUTING](.github/CONTRIBUTING.md). Coding agents should read
-[AGENTS.md](AGENTS.md) first. Report a security problem to support@shotstack.io
-rather than a public issue — see [SECURITY](.github/SECURITY.md).
+Setup, how to run the node in a real n8n, the rules, and the release process are
+all in [CONTRIBUTING](.github/CONTRIBUTING.md). Do not open a public issue for a
+problem that could expose an API key or someone's rendered files. Use private
+vulnerability reporting on the repository Security tab.
 
 ## Licence
 

@@ -234,11 +234,22 @@ check('Docs', 'no Shotstack API behaviour restated in the README', () => {
 	const hits = smells.filter(([re]) => re.test(readme)).map(([, why]) => why);
 	return { ok: hits.length === 0, actual: hits.length ? hits.join('; ') : 'none found' };
 });
-check('Docs', 'root markdown files', () => {
-	const root = sh('git ls-files "*.md"')
-		.split('\n')
-		.filter((f) => f && !f.includes('/'));
-	return { ok: root.length <= 4, actual: `${root.length} at root: ${root.join(', ')}` };
+// Every markdown file has to earn its place. A repository grows documents on its
+// own, and a reader who meets four of them cannot tell which one is current.
+// Adding one to this list is the decision; the check only stops it drifting.
+const DOCS_ALLOWED = new Set([
+	'README.md', // the npm and n8n listing page
+	'CHANGELOG.md', // what changed between published versions
+	'LICENSE.md', // package.json declares MIT, and npm expects the file
+	'.github/CONTRIBUTING.md', // how to maintain it, including cover when the owner is away
+]);
+check('Docs', 'no markdown file beyond the essential set', () => {
+	const found = sh('git ls-files "*.md"').split('\n').filter(Boolean);
+	const wrong = [
+		...found.filter((f) => !DOCS_ALLOWED.has(f)).map((f) => `extra ${f}`),
+		...[...DOCS_ALLOWED].filter((f) => !found.includes(f)).map((f) => `missing ${f}`),
+	];
+	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(', ') : found.join(', ') };
 });
 check('Docs', 'every README link resolves', () => {
 	const links = [...readFileSync('README.md', 'utf8').matchAll(/\]\((https?:\/\/[^)]+)\)/g)].map((m) => m[1]);
