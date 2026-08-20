@@ -44,7 +44,7 @@ jobs:
         run: 'npm test'
 
       - name: Run the review checks
-        # 32 checks the other steps do not cover: n8n's verification
+        # The checks the other steps do not cover: n8n's verification
         # requirements, that the operations still follow the OpenAPI spec, and
         # the sanity sweeps for leftovers. Exits non-zero on any failure.
         run: 'node scripts/review-check.mjs'

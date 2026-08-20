@@ -48,7 +48,7 @@ not match the installed schema package.
 ## Job 3 — it is time to release
 
 ```bash
-node scripts/review-check.mjs   # 32 checks, all must pass
+node scripts/review-check.mjs   # every check must pass
 npm test
 npm run release
 ```

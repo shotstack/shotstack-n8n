@@ -12,15 +12,16 @@ and n8n builds the HTTP request. There is no imperative `execute()`.
 
 ```bash
 npm ci                          # install
-npm test                        # builds first, then 31 assertions in 4 files
+npm test                        # builds first, then runs four test files
 npm run lint                    # n8n's own ruleset, must exit 0
-node scripts/review-check.mjs   # 33 checks, must be 33/33
+node scripts/review-check.mjs   # every check must pass
 npm run dev                     # a real n8n with this node loaded, needs a real terminal
 ```
 
 Run `node scripts/review-check.mjs` before you claim a change is finished. It
 checks n8n's verification requirements, spec alignment and repo hygiene, and it
-prints what it measured rather than what it hoped.
+prints what it measured rather than what it hoped. Do not write the number of
+checks into prose — it goes stale the moment one is added.
 
 ## Never
 

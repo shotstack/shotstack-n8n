@@ -9,7 +9,7 @@ behavioural, name the test that fails without it. -->
 
 - [ ] `npm test`
 - [ ] `npm run lint`
-- [ ] `node scripts/review-check.mjs` — 33/33
+- [ ] `node scripts/review-check.mjs` — every check passes
 - [ ] Ran it in a real n8n (`npm run dev`) if the change touches a field, an
       operation, or a request
 
