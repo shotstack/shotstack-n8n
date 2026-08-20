@@ -62,12 +62,18 @@ const blobUrl = (ref, path) => `https://github.com/${REPO}/blob/${ref}/skills/sh
  */
 const flatten = (markdown, ref) =>
 	markdown
+		// Line endings first. The frontmatter pattern below anchors on \n, so a
+		// file served with CRLF would keep its frontmatter and hand a model a
+		// block of skill-runner configuration.
+		.replace(/\r\n?/g, '\n')
 		// Drop the YAML frontmatter. It configures a skill runner, and says
 		// nothing a model needs to write a recipe.
 		.replace(/^---\n[\s\S]*?\n---\n/, '')
-		// ](shared/agent-core.md) and ](../references/svg.md) alike.
-		.replace(/\]\((?:\.\.\/)?((?:shared|references)\/[a-z0-9-]+\.md)\)/gi, (m, path) => `](${blobUrl(ref, path)})`)
-		.replace(/\r\n?/g, '\n')
+		// ](shared/agent-core.md), ](./references/svg.md) and ](../references/svg.md).
+		.replace(
+			/\]\((?:\.{1,2}\/)?((?:shared|references)\/[a-z0-9-]+\.md)\)/gi,
+			(m, path) => `](${blobUrl(ref, path)})`,
+		)
 		.trim();
 
 const fetchFile = async (ref, path) => {
