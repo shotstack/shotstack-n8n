@@ -195,7 +195,7 @@ callback.
 ### Callback (best for long or bulk renders)
 
 1. Add a **Webhook** node and copy its URL.
-2. Paste that URL into **Callback URL** on the render operation.
+2. Paste that URL into **Callback URL** on **Render → Render Asset**.
 
 Shotstack posts the finished render to that URL and the workflow continues from
 the Webhook node. Nothing polls and nothing waits, so this suits a long render,

@@ -225,20 +225,28 @@ const waitForHostedAsset = async function (
 				});
 			}
 
-			const wanted = mainFileOnly ? live.filter((file) => !EXTRA_FILES.test(file.name)) : live;
-
-			// Every wanted file has stopped moving, so this is the answer.
-			const settled =
-				wanted.length > 0 && wanted.every((f) => f.status === 'ready' || f.status === 'failed');
-			if (settled) {
-				if (wanted.some((file) => file.status === 'ready')) {
-					// Run the real request so the output goes through Simplify.
-					return await this.makeRoutingRequest(requestData);
-				}
+			// The rendered file is what this step is for, whatever Main File Only
+			// is set to. A poster may fail without failing the step. The rendered
+			// file may not.
+			const main = live.filter((file) => !EXTRA_FILES.test(file.name));
+			if (main.some((file) => file.status === 'failed')) {
 				throw new NodeOperationError(this.getNode(), 'Shotstack did not publish the file', {
 					description: 'The render is complete. Send this render ID to Shotstack support.',
 					itemIndex: this.getItemIndex(),
 				});
+			}
+
+			// Shotstack publishes the poster before the rendered file, so a ready
+			// poster on its own is not an answer.
+			const mainReady = main.length > 0 && main.every((file) => file.status === 'ready');
+			// With Main File Only off the extras are returned too, so wait for them
+			// to stop moving. A failed extra counts as stopped.
+			const extrasSettled =
+				mainFileOnly || live.every((file) => file.status === 'ready' || file.status === 'failed');
+
+			if (mainReady && extrasSettled) {
+				// Run the real request so the output goes through Simplify.
+				return await this.makeRoutingRequest(requestData);
 			}
 		}
 
