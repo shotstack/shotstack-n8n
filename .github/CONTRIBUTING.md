@@ -116,7 +116,13 @@ candidate, then tag `0.1.0`.
 
 The scan lints the attested source with `@n8n/eslint-plugin-community-nodes`
 plus `no-console`, and treats an unreachable source repository as a hard
-failure. `npm run lint` covers the same rules.
+failure.
+
+It globs `**/*.js`, `**/*.ts` and `**/*.json`, so the `.mjs` files under
+`scripts/` and `test/` are outside it. They are outside `npm run lint` too:
+eslint resolves 236 rules for a file under `nodes/` and **zero** for a `.mjs`.
+Nothing checks those files, which is why they may use `console`. Do not move
+that code into a `.ts` file without expecting `no-console` to fire.
 
 ### Before the first release
 

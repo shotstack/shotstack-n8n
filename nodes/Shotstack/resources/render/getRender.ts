@@ -120,7 +120,7 @@ const waitForRender = async function (
 				: 'The status check did not complete';
 	throw new NodeOperationError(this.getNode(), `${reached} after ${minutes} minutes`, {
 		description:
-			'Raise Give Up After for a long render, or turn off Wait For The Render To Finish and use a Callback URL on the render step instead.',
+			'Raise Give Up After for a long render, or turn off Wait for the Render To Finish and use a Callback URL on Render Asset instead.',
 		itemIndex: this.getItemIndex(),
 	});
 };
@@ -180,8 +180,10 @@ export const getRenderDescription: INodeProperties[] = [
 		routing: {
 			request: {
 				qs: {
-					// Only when asked. Sending data=false on every poll is noise.
-					data: '={{ $value || undefined }}',
+					// Always send it. The API returns the submitted edit when the
+					// parameter is absent, so omitting it while the toggle is off
+					// returns the whole timeline on every poll.
+					data: '={{ $value }}',
 				},
 			},
 		},

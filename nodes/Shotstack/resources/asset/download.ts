@@ -25,6 +25,15 @@ const explainMissingUrl: PreSendAction = async function (
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ) {
+	// The node defaults are for api.shotstack.io, and this request goes wherever
+	// the URL points. Delete them here: routing headers are merged with lodash
+	// merge, which skips an undefined source value rather than removing the key.
+	const headers = requestOptions.headers as IDataObject | undefined;
+	if (headers) {
+		delete headers['Content-Type'];
+		delete headers['User-Agent'];
+	}
+
 	const url = requestOptions.url;
 	if (typeof url === 'string' && /^https?:\/\//i.test(url.trim())) {
 		return requestOptions;
@@ -79,12 +88,15 @@ const attachDownloadedFile: PostReceiveAction = async function (
 
 	const contentType = String(response.headers?.['content-type'] ?? '').split(';')[0].trim();
 
-	// A URL that answers 200 with a web page saves as a video that will not play,
-	// and the workflow reports success. Name it here instead.
-	if (/^text\/html$/i.test(contentType)) {
-		throw new NodeOperationError(this.getNode(), 'That URL returned a web page, not a file', {
-			description:
-				'Check the File URL. It should be the url from Get Asset by Render ID, which looks like https://cdn.shotstack.io/...',
+	// A URL that answers 200 with an error page saves as a video that will not
+	// play, and the workflow reports success. Reject the types that carry a
+	// message rather than media: S3 answers application/xml, a proxy answers
+	// text/plain, an API answers application/json. Anything else is let through,
+	// because the body arrives as a Buffer either way and the check below cannot
+	// tell media from prose.
+	if (/^(text\/|application\/(json|xml)$)/i.test(contentType)) {
+		throw new NodeOperationError(this.getNode(), 'That URL returned a message, not a file', {
+			description: `The host answered with ${contentType}. Check the File URL: it should be the url from Get Asset by Render ID, which looks like https://cdn.shotstack.io/...`,
 			itemIndex: this.getItemIndex(),
 		});
 	}
@@ -136,10 +148,9 @@ export const downloadDescription: INodeProperties[] = [
 				baseURL: '',
 				url: '={{ $value }}',
 				method: 'GET',
-				// The node defaults are for the Shotstack API, and this request goes to
-				// whatever host the URL names. Ask for bytes, and send neither a
-				// Content-Type on a GET with no body nor our User-Agent to a stranger.
-				headers: { Accept: '*/*', 'Content-Type': undefined, 'User-Agent': undefined },
+				// Ask for bytes. Content-Type and User-Agent are deleted in the preSend
+				// above, because setting them undefined here would not remove them.
+				headers: { Accept: '*/*' },
 				// Ask for raw bytes rather than parsed JSON.
 				encoding: 'arraybuffer',
 				json: false,

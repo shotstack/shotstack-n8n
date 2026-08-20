@@ -63,13 +63,23 @@ check('the documented operations are the ones the node has', () => {
 		const text = read(file);
 		for (const [resource, operations] of named) {
 			// The lookbehind stops "Get Hosted Asset → next step" reading as the
-			// Asset resource.
-			for (const match of text.matchAll(new RegExp(`(?<![A-Za-z] )${resource} → \\*{0,2}(.+)`, 'g'))) {
+			// Asset resource. Escape the name: a future resource such as
+			// "Ingest (Beta)" would otherwise become a capture group, and every
+			// correctly documented line would read as wrong.
+			const safe = resource.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			for (const match of text.matchAll(new RegExp(`(?<![A-Za-z] )${safe} → \\*{0,2}(.+)`, 'g'))) {
 				found += 1;
-				// The operation name runs to the end of the phrase, so test by
-				// prefix. A truncated name then fails instead of matching.
-				if (!operations.some((operation) => match[1].startsWith(operation))) {
-					wrong.push(`${file}: "${resource} → ${match[1].split(/[|*.,]/)[0].trim()}"`);
+				// The operation name runs to the end of the phrase, so match by
+				// prefix, then require a non-word character after it. Otherwise
+				// "Render Assets" and "Render Asset (old)" both pass as "Render Asset".
+				const rest = match[1];
+				const known = operations.some((operation) => {
+					if (!rest.startsWith(operation)) return false;
+					const after = rest.slice(operation.length);
+					return after === '' || /^[^\w]/.test(after);
+				});
+				if (!known) {
+					wrong.push(`${file}: "${resource} → ${rest.split(/[|*.,]/)[0].trim()}"`);
 				}
 			}
 		}
@@ -90,8 +100,15 @@ check('the text handed to an AI names the operations the node has', () => {
 	// skill.ts is generated. Rebuilding the header needs no network, so compare
 	// it here: a rename without a regenerate fails now, not on a customer's model.
 	const source = read('nodes/Shotstack/reference/skill.ts');
-	const ref = JSON.parse(source.match(/export const SKILL_SOURCE = ([\s\S]*?);\n/)[1]).ref;
-	const shipped = JSON.parse(source.match(/export const SKILL_HEADER: string = (".*?");\n/s)[1]);
+	// Keep the annotation optional and assert the match. A parser that forbids
+	// the annotation breaks on sight, and a bare [1] throws a TypeError that
+	// sends the reader to a command which cannot fix it. recipe-rules.mjs agrees.
+	const sourceMatch = source.match(/export const SKILL_SOURCE(?:: \w+)? = ([\s\S]*?);\r?\n/);
+	const headerMatch = source.match(/export const SKILL_HEADER(?:: string)? = (".*?");\r?\n/s);
+	assert.ok(sourceMatch, 'cannot read SKILL_SOURCE from skill.ts — has the generator changed?');
+	assert.ok(headerMatch, 'cannot read SKILL_HEADER from skill.ts — has the generator changed?');
+	const ref = JSON.parse(sourceMatch[1]).ref;
+	const shipped = JSON.parse(headerMatch[1]);
 	assert.equal(
 		shipped,
 		buildHeader(ref),
@@ -106,10 +123,20 @@ check('no document names a field the node does not have', () => {
 	const walk = (list) => {
 		for (const property of list ?? []) {
 			if (property.displayName) labels.add(property.displayName);
-			for (const option of property.options ?? []) walk(option.values);
+			for (const option of property.options ?? []) {
+				// An option's own name is documentable too: a README row reading
+				// "| **Sandbox** |" describes a real control, not a typo.
+				if (option.name) labels.add(option.name);
+				walk(option.values);
+			}
 		}
 	};
 	walk(properties);
+	// The credential's fields appear in the README the same way.
+	for (const relative of manifest.n8n.credentials) {
+		const credential = new (Object.values(require(resolve(root, relative)))[0])();
+		walk(credential.properties);
+	}
 	for (const { operation } of pairs) labels.add(operation);
 	for (const name of resources.values()) labels.add(name);
 

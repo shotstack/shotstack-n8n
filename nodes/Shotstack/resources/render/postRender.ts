@@ -13,7 +13,7 @@ const showOnly = {
 };
 
 const SAMPLE_EDIT =
-	'{"timeline":{"tracks":[{"clips":[{"asset":{"type":"text","text":"Hello"},"start":0,"length":4}]}]},"output":{"format":"mp4","size":{"width":1080,"height":1920}}}';
+	'{"timeline":{"tracks":[{"clips":[{"asset":{"type":"rich-text","text":"Hello"},"start":0,"length":4}]}]},"output":{"format":"mp4","size":{"width":1080,"height":1920}}}';
 
 /**
  * Builds the request body from the edit and the callback.

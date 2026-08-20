@@ -7,7 +7,7 @@
 // Pinned to a commit, not a branch. This text decides what a customer's AI
 // writes, so it must change on release. Tracking a branch would make the same
 // node version produce different videos on different days.
-import { writeFileSync } from 'node:fs';
+import { realpathSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -109,15 +109,26 @@ export const buildHeader = (ref) =>
 		'2. You cannot run the shotstack command. Where the text uses it, that is a',
 		'   person checking a recipe by hand. Skip those steps.',
 		'3. Where the rules and the reference above disagree on which asset types are',
-		'   current, the reference wins. The reference is generated from the current',
-		'   schema. The REPLACED list above is the authority.',
+		'   current, the reference wins. It is generated from the schema, and the',
+		'   rules are prose that can lag it. The REPLACED list above is the authority.',
 		'',
 		'Put the JSON you produce in the Edit field of the Render Asset operation.',
 	].join('\n');
 
 // Importing this file must not rewrite the repository, so the test can reuse
 // buildHeader above.
-const runDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+// Node realpaths the entry point but leaves argv[1] as typed, so resolve both.
+// Through a symlinked checkout an unresolved compare is false, and this script
+// then does nothing and exits 0 — which reads as "the skill is fresh".
+const realpath = (path) => {
+	try {
+		return realpathSync(path);
+	} catch {
+		return resolve(path);
+	}
+};
+const runDirectly =
+	process.argv[1] && realpath(fileURLToPath(import.meta.url)) === realpath(process.argv[1]);
 
 if (runDirectly) {
 	const ref = await resolveRef();

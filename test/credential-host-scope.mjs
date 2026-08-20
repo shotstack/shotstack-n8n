@@ -58,7 +58,11 @@ let callers = 0;
 for (const name of files) {
 	const source = await readFile(new URL(name, dist), 'utf8');
 	// requestDefaults covers the declarative paths; the rest build their own.
-	const makesRequests = /httpRequest(WithAuthentication)?\.call|requestDefaults/.test(source);
+	// Match any helpers.httpRequest, with or without .call — requiring .call hid
+	// the reference operation's own fetch, which shipped with no User-Agent.
+	const makesRequests = /helpers\.httpRequest|httpRequest(WithAuthentication)?\.call|requestDefaults/.test(
+		source,
+	);
 	if (!makesRequests) continue;
 	callers += 1;
 

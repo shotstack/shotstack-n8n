@@ -42,10 +42,12 @@ const keepMainFile: PostReceiveAction = async function (
 	const nameOf = (item: INodeExecutionData) => {
 		const json = item.json as IDataObject;
 		const attributes = (json.attributes ?? json) as IDataObject;
-		return String(attributes.filename ?? attributes.url ?? '').split('?')[0];
+		// || not ??. Both fields are optional, and an empty name matches no
+		// suffix, so ?? would keep a nameless asset as the rendered file.
+		return String(attributes.filename || attributes.url || '').split('?')[0];
 	};
 
-	const main = items.filter((item) => !EXTRA_FILES.test(nameOf(item)));
+	const main = items.filter((item) => nameOf(item) !== '' && !EXTRA_FILES.test(nameOf(item)));
 	// Keep everything rather than nothing if the naming ever changes.
 	return main.length > 0 ? main : items;
 };
@@ -207,10 +209,11 @@ const waitForHostedAsset = async function (
 			const assets = (response.body?.data ?? []) as IDataObject[];
 			const files = assets.map((asset) => {
 				const attributes = (asset.attributes ?? {}) as IDataObject;
-				return {
-					name: String(attributes.filename ?? attributes.url ?? '').split('?')[0],
-					status: attributes.status,
-				};
+				// || not ??. Both fields are optional and absent while an asset is
+				// importing, and an empty name matches no suffix, so ?? would file a
+				// nameless asset as the rendered file.
+				const name = String(attributes.filename || attributes.url || '').split('?')[0];
+				return { name, named: name !== '', status: attributes.status };
 			});
 
 			// A deleted file never becomes ready, so waiting for it would burn the
@@ -227,8 +230,8 @@ const waitForHostedAsset = async function (
 
 			// The rendered file is what this step is for, whatever Main File Only
 			// is set to. A poster may fail without failing the step. The rendered
-			// file may not.
-			const main = live.filter((file) => !EXTRA_FILES.test(file.name));
+			// file may not. A file with no name yet is not known to be either.
+			const main = live.filter((file) => file.named && !EXTRA_FILES.test(file.name));
 			if (main.some((file) => file.status === 'failed')) {
 				throw new NodeOperationError(this.getNode(), 'Shotstack did not publish the file', {
 					description: 'The render is complete. Send this render ID to Shotstack support.',
@@ -236,16 +239,26 @@ const waitForHostedAsset = async function (
 				});
 			}
 
+			const settled = (file: { status: unknown }) =>
+				file.status === 'ready' || file.status === 'failed';
+
 			// Shotstack publishes the poster before the rendered file, so a ready
 			// poster on its own is not an answer.
 			const mainReady = main.length > 0 && main.every((file) => file.status === 'ready');
-			// With Main File Only off the extras are returned too, so wait for them
-			// to stop moving. A failed extra counts as stopped.
-			const extrasSettled =
-				mainFileOnly || live.every((file) => file.status === 'ready' || file.status === 'failed');
+			// With Main File Only off the extras come back too, so wait for them to
+			// stop moving. A failed extra counts as stopped.
+			const extrasSettled = mainFileOnly || live.every(settled);
 
 			if (mainReady && extrasSettled) {
 				// Run the real request so the output goes through Simplify.
+				return await this.makeRoutingRequest(requestData);
+			}
+
+			// No rendered file, but everything present has stopped moving. Waiting
+			// cannot change that, so return what there is rather than burn the full
+			// two minutes and then report the wrong cause. keepMainFile does the
+			// same when its filter leaves nothing.
+			if (main.length === 0 && live.length > 0 && live.every(settled)) {
 				return await this.makeRoutingRequest(requestData);
 			}
 		}
@@ -292,7 +305,7 @@ export const getAssetByRenderIdDescription: INodeProperties[] = [
 		default: true,
 		displayOptions: { show: showOnly },
 		description:
-			'Whether to return only the rendered video. A render also hosts a poster and a thumbnail, and those are separate files. Turn this off to get all of them, one item each',
+			'Whether to return only the rendered file. A render also hosts a poster and a thumbnail, and those are separate files. Turn this off to get all of them, one item each',
 		routing: {
 			output: { postReceive: [keepMainFile] },
 		},

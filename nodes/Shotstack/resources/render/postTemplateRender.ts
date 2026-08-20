@@ -47,8 +47,41 @@ const buildMerge: PreSendAction = async function (
 			merge = raw;
 		}
 	} else {
-		const typed = this.getNodeParameter('merge', {}) as IDataObject;
-		merge = Array.isArray(typed) ? typed : (typed?.mergeFields as unknown[] | undefined);
+		const typed = this.getNodeParameter('merge', {}) as unknown;
+		if (Array.isArray(typed)) {
+			merge = typed;
+		} else if (typeof typed === 'string') {
+			// An expression or an AI agent can put the whole list here as text.
+			// Dropping it silently renders the template with raw placeholders.
+			const text = typed.trim();
+			if (text) {
+				try {
+					merge = JSON.parse(text);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), 'Merge Fields is not valid JSON', {
+						description: `${(error as Error).message}. Expected [{"find": "HEADLINE", "replace": "Hello"}].`,
+						itemIndex: this.getItemIndex(),
+					});
+				}
+			}
+		} else if (typed && typeof typed === 'object') {
+			const object = typed as IDataObject;
+			if (object.mergeFields !== undefined) {
+				merge = object.mergeFields as unknown[];
+			} else if (object.find !== undefined) {
+				// A bare { find, replace } instead of a list of them.
+				merge = [object];
+			} else if (Object.keys(object).length > 0) {
+				merge = object;
+			}
+		}
+	}
+
+	if (merge === null) {
+		throw new NodeOperationError(this.getNode(), 'Merge fields must be a list', {
+			description: 'Expected [{"find": "HEADLINE", "replace": "Hello"}] and got null.',
+			itemIndex: this.getItemIndex(),
+		});
 	}
 
 	if (merge !== undefined && !Array.isArray(merge)) {

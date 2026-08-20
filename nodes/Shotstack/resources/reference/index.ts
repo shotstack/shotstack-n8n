@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { RECIPE_REFERENCE } from '../../reference/recipeReference';
 import { SKILL_CORE, SKILL_HEADER, SKILL_SOURCE, SKILL_TOPICS } from '../../reference/skill';
+import { USER_AGENT } from '../../userAgent';
 
 const showOnly = {
 	resource: ['reference'],
@@ -16,7 +17,7 @@ const showOnly = {
 const FULL_DOCS_URL = 'https://shotstack.io/docs/guide/llms-full.txt';
 
 /**
- * Builds the answer a language model needs to write a working recipe.
+ * Builds the answer a language model needs to write a working edit.
  *
  * Two halves, neither of them written here. The allowed values come from the
  * @shotstack/schemas package, and the craft from Shotstack's own agent skill,
@@ -58,6 +59,7 @@ const buildReference = async function (
 				// Without this a stalled connection blocks the item forever, and
 				// the fallback below never runs. The other request paths set it too.
 				timeout: 30000,
+				headers: { 'User-Agent': USER_AGENT },
 			})) as string;
 			json.documentation = docs;
 			json.documentationChars = String(docs).length;
@@ -89,7 +91,7 @@ export const referenceDescription: INodeProperties[] = [
 				name: 'Get Reference',
 				value: 'getReference',
 				description:
-					"Get everything an AI needs to write a recipe: every asset type and allowed value, plus Shotstack's own rules for making a video that works and looks good. Give this to an AI before asking it to write a recipe.",
+					"Get everything an AI needs to write an edit: every asset type and allowed value, plus Shotstack's own rules for making a video that works and looks good. Give this to an AI before asking it to write one.",
 				action: 'Get the schema and rules for writing an edit',
 				routing: {
 					request: {
@@ -109,7 +111,7 @@ export const referenceDescription: INodeProperties[] = [
 		default: 'core',
 		displayOptions: { show: { ...showOnly, operation: ['getReference'] } },
 		description:
-			'How much to hand the model. Core is enough to write a good recipe. The larger settings add depth on specific subjects, and need a model with a large context window',
+			'How much to hand the model. Core is enough to write a good edit. The larger settings add depth on specific subjects, and need a model with a large context window',
 		options: [
 			{
 				name: 'Core',
@@ -138,6 +140,6 @@ export const referenceDescription: INodeProperties[] = [
 		default: true,
 		displayOptions: { show: { ...showOnly, operation: ['getReference'] } },
 		description:
-			'Whether to list the templates saved in this account alongside the reference, so an AI can choose one instead of writing a recipe from nothing',
+			'Whether to list the templates saved in this account alongside the reference, so an AI can choose one instead of writing an edit from nothing',
 	},
 ];
