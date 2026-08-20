@@ -304,6 +304,13 @@ Tested against n8n 2.35. Requires Node.js 20.19 or later; n8n 2.x itself asks fo
 - [Shotstack CLI](https://shotstack.io/docs/guide/agents/cli/)
 - [n8n community nodes](https://docs.n8n.io/integrations/#community-nodes)
 
+## Contributing
+
+Setup, how to run the node in a real n8n, and the release process are in
+[CONTRIBUTING](.github/CONTRIBUTING.md). Coding agents should read
+[AGENTS.md](AGENTS.md) first. Report a security problem to support@shotstack.io
+rather than a public issue — see [SECURITY](.github/SECURITY.md).
+
 ## Licence
 
 [MIT](LICENSE.md)
