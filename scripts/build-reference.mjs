@@ -90,6 +90,35 @@ for (const key of Object.keys(S).filter((k) => /Asset$/.test(k) && k !== 'Asset'
 	const t = S[key].properties?.type?.enum?.[0];
 	if (t && !S[key].deprecated && !deprecated.has(t)) out.push(line(`"${t}"`.padEnd(17), S[key]));
 }
+// The skill and the schema disagree: the skill's "current" table still lists
+// text-to-image, image-to-video and text-to-speech, which the schema now marks
+// deprecated. Both ship in the same answer, so say which wins — quoting the
+// schema's own notice rather than writing our own, so it cannot go stale.
+// The notice names a schema class. A recipe writes a type string, so say that.
+const typeOfSchema = Object.fromEntries(
+	Object.keys(S)
+		.filter((k) => /Asset$/.test(k))
+		.map((k) => [k, S[k].properties?.type?.enum?.[0]])
+		.filter(([, t]) => t),
+);
+
+const replaced = [];
+for (const key of Object.keys(S).filter((k) => /Asset$/.test(k))) {
+	const type = S[key].properties?.type?.enum?.[0];
+	const notice = String(S[key].description ?? '').match(/is deprecated\.\s*(Use [^*]+?)\s*\*\*/);
+	if (type && S[key].deprecated && notice) {
+		const advice = notice[1]
+			.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+			.replace(/\b([A-Z]\w+Asset)\b/g, (m) => (typeOfSchema[m] ? `the "${typeOfSchema[m]}" asset` : m))
+			.replace(/\s+/g, ' ')
+			.trim();
+		replaced.push(`  "${type}"`.padEnd(19) + advice);
+	}
+}
+if (replaced.length) {
+	out.push('', 'REPLACED. These still render, but use the newer form instead.', ...replaced);
+}
+
 out.push('', 'OUTPUT');
 out.push(line('', S.Output, ['format', 'size', 'resolution', 'aspectRatio', 'fps', 'quality']));
 out.push('  size = { "width": int, "height": int }');
