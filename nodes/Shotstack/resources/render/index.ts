@@ -32,7 +32,7 @@ export const renderDescription: INodeProperties[] = [
 				value: 'postRender',
 				description:
 					'Render a video or image from a Shotstack edit. This is the general render method. It accepts any number of clips, every asset type and the generative assets. Point an AI agent here.',
-				action: 'Render asset',
+				action: 'Render a video or image from an edit',
 				routing: {
 					request: {
 						method: 'POST',
@@ -45,7 +45,7 @@ export const renderDescription: INodeProperties[] = [
 				name: 'Render Template',
 				value: 'postTemplateRender',
 				description: 'Render a saved template, filling in its placeholders',
-				action: 'Render template',
+				action: 'Render a video or image from a saved template',
 				routing: {
 					request: {
 						method: 'POST',
@@ -59,7 +59,7 @@ export const renderDescription: INodeProperties[] = [
 				value: 'getRender',
 				description:
 					'Check the status of a render and get its temporary URL. Use Asset → Get Asset by Render ID for the permanent URL.',
-				action: 'Get render status',
+				action: 'Get the status of a render',
 				routing: {
 					request: {
 						method: 'GET',

@@ -244,6 +244,13 @@ a forty-line timeline much less so. Save a template, then let the agent supply
 the values. Set **Merge Fields Source** to **JSON** so it can hand over the whole
 list at once.
 
+**The defaults that read the previous step do not apply in tool mode.** Render
+ID and File URL default to `{{ $json.id }}` and `{{ $json.url }}`. On the canvas
+those read the previous node. When an AI Agent calls the node, `$json` is the
+agent's own arguments, so the default finds nothing. Set each field the agent
+must supply to `{{ $fromAI('renderId') }}` or similar, so n8n asks the model for
+it by name.
+
 **Merge every field, or send none.** A partial merge replaces the template's
 stored list. It does not add to it. A field the agent leaves out is not filled
 in from the template. Text then renders as a raw placeholder, and an image or

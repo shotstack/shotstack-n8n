@@ -136,8 +136,10 @@ export const downloadDescription: INodeProperties[] = [
 				baseURL: '',
 				url: '={{ $value }}',
 				method: 'GET',
-				// The node default asks a CDN for JSON. This request wants bytes.
-				headers: { Accept: '*/*' },
+				// The node defaults are for the Shotstack API, and this request goes to
+				// whatever host the URL names. Ask for bytes, and send neither a
+				// Content-Type on a GET with no body nor our User-Agent to a stranger.
+				headers: { Accept: '*/*', 'Content-Type': undefined, 'User-Agent': undefined },
 				// Ask for raw bytes rather than parsed JSON.
 				encoding: 'arraybuffer',
 				json: false,

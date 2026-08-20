@@ -31,7 +31,7 @@ export const assetDescription: INodeProperties[] = [
 				value: 'download',
 				description:
 					'Fetch a hosted file as binary data. The next step can then attach or upload it. This operation reads the URL that the previous step produced.',
-				action: 'Download file',
+				action: 'Download a hosted file as binary data',
 				routing: {
 					request: {
 						method: 'GET',
@@ -42,7 +42,7 @@ export const assetDescription: INodeProperties[] = [
 				name: 'Get Asset by Render ID',
 				value: 'getAssetByRenderId',
 				description: 'Get the permanent CDN URL for a finished render',
-				action: 'Get asset by render ID',
+				action: 'Get the permanent URL for a finished render',
 				routing: {
 					request: {
 						method: 'GET',

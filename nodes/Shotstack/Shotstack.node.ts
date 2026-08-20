@@ -15,7 +15,9 @@ export class Shotstack implements INodeType {
 		},
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["operation"]}}',
+		// The operation values are OpenAPI operationIds, so the resource tells
+		// the reader which of the three a bare id belongs to.
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Render video and images from JSON with the Shotstack API',
 		defaults: {
 			name: 'Shotstack',
