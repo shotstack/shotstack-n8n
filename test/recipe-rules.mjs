@@ -16,7 +16,10 @@ const read = (relative) => readFileSync(new URL(relative, import.meta.url), 'utf
 const vendored = read('../nodes/Shotstack/reference/skill.ts');
 
 const constant = (name) => {
-	const match = vendored.match(new RegExp(`export const ${name} = ("(?:[^"\\\\]|\\\\.)*");`, 's'));
+	// The type annotation is optional here on purpose. It exists so TypeScript
+	// widens the string instead of emitting a 110 KB literal type, and a parser
+	// that required its absence broke the moment it was added.
+	const match = vendored.match(new RegExp(`export const ${name}(?:: string)? = ("(?:[^"\\\\]|\\\\.)*");`, 's'));
 	assert.ok(match, `${name} missing from the vendored skill`);
 	return JSON.parse(match[1]);
 };
@@ -46,30 +49,61 @@ check('a recipe following the shipped rules still validates', () => {
 	execFileSync(process.execPath, [cli, 'validate', '--strict', fixture], { stdio: 'pipe' });
 });
 
+check('the shipped skill matches the pin the script names', () => {
+	// Offline. Catches a tree where someone ran --latest, saw it fail, and left
+	// skill.ts vendored at master while PIN still names the old commit — the
+	// node would then ship text nobody pinned and say otherwise in rulesSource.
+	const script = read('../scripts/vendor-skill.mjs');
+	const pin = script.match(/^const PIN = '([0-9a-f]{40})'/m)?.[1];
+	assert.ok(pin, 'could not read PIN from vendor-skill.mjs');
+	const shipped = vendored.match(/"ref": "([0-9a-f]{40})"/)?.[1];
+	assert.equal(shipped, pin, 'skill.ts was vendored at a different commit than PIN');
+});
+
 check('the vendored skill says where it came from', () => {
 	const header = constant('SKILL_HEADER');
 	assert.match(header, /shotstack\/shotstack-cli/, 'the header does not name the source repository');
 	assert.match(header, /Apache-2\.0/, 'the header does not carry the licence');
-	assert.match(header, /n8n workflow, not running a terminal/, 'the n8n context note is missing');
+	assert.match(header, /writing JSON for an n8n workflow/, 'the n8n context note is missing');
 });
 
 check('no link tells the model to open a file it cannot reach', () => {
 	// The skill is written for an agent that reads files off disk. Pasted into
 	// an n8n field nothing can, so vendor-skill.mjs rewrites those links to
-	// addresses. Any left behind are dead instructions.
+	// addresses.
+	//
+	// Match every markdown link and keep the ones that are not addresses. An
+	// earlier version of this check reused the generator's own pattern, which
+	// required a shared/ or references/ prefix, so it shared the generator's
+	// blind spot and passed green while six sibling links stayed relative.
 	const text = constant('SKILL_CORE') + constant('SKILL_TOPICS');
-	const relative = text.match(/\]\((?:\.\.\/)?(?:shared|references)\/[a-z0-9-]+\.md\)/gi) ?? [];
-	assert.deepEqual(relative, [], `relative links left: ${relative.slice(0, 3).join(' ')}`);
+	const relative = [...text.matchAll(/\]\(([^)\s]+\.md)\)/g)]
+		.map((m) => m[1])
+		.filter((link) => !/^[a-z]+:/i.test(link));
+	assert.deepEqual([...new Set(relative)], [], `links that point at nothing: ${relative.slice(0, 4).join(' ')}`);
 });
 
 check('the command-line manual is left out', () => {
 	// SKILL.md and ingest.md tell the reader to set environment variables and
-	// run shell commands. An AI inside n8n has no terminal, so those files would
-	// be instructions it cannot follow.
+	// run shell commands. An AI inside n8n has no terminal.
 	const core = constant('SKILL_CORE');
 	assert.doesNotMatch(core, /^===== SKILL\.md/m, 'SKILL.md is the CLI manual and must not be vendored');
-	const commands = core.match(/shotstack (render|ingest|preview|init|login)\b/g) ?? [];
-	assert.deepEqual(commands, [], `shell instructions reached the core: ${commands.join(' ')}`);
+	assert.doesNotMatch(core, /^===== references\/ingest\.md/m, 'ingest.md is the upload manual');
+});
+
+check('the header answers every instruction the model cannot follow', () => {
+	// Whatever the skill tells the reader to do outside n8n, the header has to
+	// name. It opens by saying to download the schema, and it uses the shotstack
+	// command throughout — both across core and topics, not just core.
+	const text = constant('SKILL_CORE') + constant('SKILL_TOPICS');
+	const header = constant('SKILL_HEADER');
+
+	if (/fetch one of these|download the schema/i.test(text)) {
+		assert.match(header, /Do not fetch anything/, 'the skill says to fetch a schema and the header does not answer it');
+	}
+	if (/\bshotstack [a-z]+\b/.test(text)) {
+		assert.match(header, /cannot run the shotstack command/, 'the skill uses the CLI and the header does not answer it');
+	}
 });
 
 check('the core is small enough to be useful', () => {

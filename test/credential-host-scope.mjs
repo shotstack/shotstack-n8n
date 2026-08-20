@@ -6,7 +6,7 @@
 //
 // Runs against dist, which is what npm publishes.
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { ShotstackApi } from '../dist/credentials/ShotstackApi.credentials.js';
 
 const credential = new ShotstackApi();
@@ -48,18 +48,30 @@ for (const [label, options, shouldSend] of cases) {
 // Every request must name this node, including the hand-rolled ones in the wait
 // loops. n8n replaces a missing User-Agent with a bare "n8n", which is what a
 // plain HTTP Request node sends, so a render made here becomes uncountable.
-const built = ['Shotstack.node', 'resources/render/get', 'resources/render/getAssets'];
-for (const name of built) {
-	const source = await readFile(new URL(`../dist/nodes/Shotstack/${name}.js`, import.meta.url), 'utf8');
+// Find the callers rather than list them. A hand-written list exempts every
+// call site added later, which is how listSearch/getTemplates.ts came to make
+// an authenticated request with no User-Agent at all.
+const dist = new URL('../dist/nodes/', import.meta.url);
+const files = (await readdir(dist, { recursive: true })).filter((f) => f.endsWith('.js'));
+let callers = 0;
+
+for (const name of files) {
+	const source = await readFile(new URL(name, dist), 'utf8');
+	// requestDefaults covers the declarative paths; the rest build their own.
+	const makesRequests = /httpRequest(WithAuthentication)?\.call|requestDefaults/.test(source);
+	if (!makesRequests) continue;
+	callers += 1;
+
 	try {
 		assert.match(source, /USER_AGENT|user-agent/i);
 		passed += 1;
-		console.log(`  ok    ${name} sends a User-Agent`);
+		console.log(`  ok    ${name.replace(/\\/g, '/')} sends a User-Agent`);
 	} catch {
 		failed += 1;
-		console.error(`  FAIL  ${name} makes requests without a User-Agent`);
+		console.error(`  FAIL  ${name.replace(/\\/g, '/')} makes requests without a User-Agent`);
 	}
 }
+assert.ok(callers >= 3, `only found ${callers} request-making files — has the scan broken?`);
 
 if (failed) {
 	console.error(`\n${failed} failing`);

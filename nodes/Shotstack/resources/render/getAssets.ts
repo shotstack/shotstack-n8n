@@ -207,16 +207,18 @@ const waitForHostedAsset = async function (
 					itemIndex: this.getItemIndex(),
 				});
 			}
-			// A deleted file never becomes ready, so waiting for it would run the
-			// full two minutes and then report the render as unpublished.
-			if (states.some((s) => s === 'deleted')) {
-				throw new NodeOperationError(this.getNode(), 'Shotstack has deleted a file from this render', {
+			// A deleted file never becomes ready, so waiting for it would burn the
+			// full two minutes. But an aged-out thumbnail must not fail a render
+			// whose video is fine, so only give up when nothing is left.
+			const live = states.filter((s) => s !== 'deleted');
+			if (states.length > 0 && live.length === 0) {
+				throw new NodeOperationError(this.getNode(), 'Shotstack has deleted the files for this render', {
 					description:
-						'The render finished, but a hosted file is gone. Sandbox renders are removed after a time. Render it again.',
+						'The render finished, but its hosted files are gone. Sandbox renders are removed after a time. Render it again.',
 					itemIndex: this.getItemIndex(),
 				});
 			}
-			if (states.length > 0 && states.every((s) => s === 'ready')) {
+			if (live.length > 0 && live.every((s) => s === 'ready')) {
 				// Run the real request so the output goes through Simplify.
 				return await this.makeRoutingRequest(requestData);
 			}
@@ -236,7 +238,7 @@ export const renderGetAssetsDescription: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		// Both render operations return the id as "id", so the chain needs no setup.
-		default: '={{ .id }}',
+		default: '={{ $json.id }}',
 		placeholder: '4a37ef85-b4d1-4b4a-90be-6515290c5091',
 		displayOptions: { show: showOnly },
 		description:

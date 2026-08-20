@@ -100,6 +100,34 @@ for (const relative of manifest.n8n.nodes) {
 	});
 }
 
+check('every prefilled expression actually parses', () => {
+	// A default like '={{ .id }}' shipped once. n8n cannot evaluate it, so the
+	// field a comment promised "needs no setup" failed before any request —
+	// worse than having no default at all. Parse each one the way n8n would.
+	const { instance } = load(manifest.n8n.nodes[0]);
+	const walk = (properties, found = []) => {
+		for (const property of properties) {
+			if (typeof property.default === 'string' && property.default.startsWith('=')) {
+				found.push([property.name, property.default]);
+			}
+			for (const option of property.options ?? []) walk(option.values ?? [], found);
+		}
+		return found;
+	};
+
+	const broken = [];
+	for (const [name, expression] of walk(instance.description.properties)) {
+		for (const [, body] of expression.matchAll(/\{\{(.*?)\}\}/g)) {
+			try {
+				new Function('$json', '$parameter', `return (${body})`);
+			} catch {
+				broken.push(`${name}: ${expression}`);
+			}
+		}
+	}
+	assert.deepEqual(broken, [], `unparseable defaults: ${broken.join(', ')}`);
+});
+
 check('the codex file names the node the way n8n registers it', () => {
 	// n8n registers a node as "<package name>.<node name>". The codex file
 	// carries the categories and documentation links, and n8n matches it on

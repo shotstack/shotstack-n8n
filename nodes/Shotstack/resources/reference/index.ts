@@ -55,6 +55,9 @@ const buildReference = async function (
 				method: 'GET',
 				url: FULL_DOCS_URL,
 				json: false,
+				// Without this a stalled connection blocks the item forever, and
+				// the fallback below never runs. The other request paths set it too.
+				timeout: 30000,
 			})) as string;
 			json.documentation = docs;
 			json.documentationChars = String(docs).length;

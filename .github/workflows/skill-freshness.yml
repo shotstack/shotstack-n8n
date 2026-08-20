@@ -1,14 +1,14 @@
 # Watches Shotstack's agent skill, which this node vendors.
 #
-# Two different questions, and only one of them is an error.
+# Two questions, and only one of them is an error.
 #
-# Has the skill MOVED? A rename, a new default branch or a reorganised folder
-# breaks the vendoring script silently, and nobody finds out until someone tries
-# to refresh. That fails this job.
+# Can we still fetch what we pinned? A rename or a reorganised folder breaks the
+# vendoring script, and nobody finds out until someone tries to refresh. That
+# fails this job. It runs the real script rather than a copy of its path list,
+# so the two cannot drift apart.
 #
-# Has the skill CHANGED? The pin is deliberate, so being behind is normal. This
-# reports it so the pin is a decision someone makes, rather than something that
-# quietly rots. It does not fail.
+# Has upstream moved on? The pin is deliberate, so being behind is normal. This
+# reports it so the pin stays a decision rather than something that rots.
 
 name: Skill freshness
 
@@ -23,26 +23,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: The skill must still be where we vendor it from
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: The pinned skill must still be fetchable, and match what we shipped
+        # Re-vendors all eleven files at PIN. A moved file fails the fetch; a
+        # committed file that no longer matches the pin fails the diff.
         run: |
-          for path in shared/agent-core.md references/fonts.md references/motion.md; do
-            url="https://raw.githubusercontent.com/shotstack/shotstack-cli/master/skills/shotstack/$path"
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$url")
-            if [ "$code" != "200" ]; then
-              echo "::error::$path returned $code. The skill has moved; scripts/vendor-skill.mjs needs updating."
-              exit 1
-            fi
-            echo "ok $path"
-          done
+          node scripts/vendor-skill.mjs
+          if ! git diff --quiet -- nodes/Shotstack/reference/skill.ts; then
+            echo "::error::skill.ts does not match the pinned commit. Run: npm run vendor:skill"
+            git diff --stat -- nodes/Shotstack/reference/skill.ts
+            exit 1
+          fi
 
       - name: Report whether the pin is behind
+        # Tolerant on purpose. Unauthenticated api.github.com allows 60 requests
+        # an hour per IP and runners share addresses, so a 403 must read as "did
+        # not find out", never as "upstream changed".
         run: |
           pinned=$(grep -oE "^const PIN = '[0-9a-f]{40}'" scripts/vendor-skill.mjs | grep -oE '[0-9a-f]{40}')
-          latest=$(curl -s https://api.github.com/repos/shotstack/shotstack-cli/commits/master | grep -m1 '"sha"' | cut -d'"' -f4)
-          echo "pinned $pinned"
-          echo "master $latest"
-          if [ "$pinned" != "$latest" ]; then
-            echo "::notice::Shotstack's skill has moved on. To take the update: npm run vendor:skill -- --latest, set PIN, re-run without --latest, commit both files."
+          latest=$(curl -sf -m 20 https://api.github.com/repos/shotstack/shotstack-cli/commits/master \
+            | grep -m1 '"sha"' | cut -d'"' -f4 || true)
+          if [ -z "$latest" ]; then
+            echo "::notice::Could not read master (rate limit or outage). Pin not compared."
+          elif [ "$pinned" != "$latest" ]; then
+            echo "::notice::Skill moved on: pinned ${pinned:0:7}, master ${latest:0:7}. To take it: npm run vendor:skill -- --latest, set PIN, re-run without --latest, commit both files."
           else
             echo "The pin is current."
           fi

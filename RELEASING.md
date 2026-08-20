@@ -31,8 +31,8 @@ npm run release
 ```
 
 `npm run release` lints, builds, asks for the version, commits, tags and pushes.
-**It does not run the tests** — its only local hook is lint and build — so run
-them yourself first. The tag then starts `publish.yml`, which publishes to npm.
+**It does not run the tests**, so run them yourself first. The tag then starts
+`publish.yml`, which publishes to npm.
 
 Three guards run in CI before anything is published:
 
@@ -43,12 +43,15 @@ Three guards run in CI before anything is published:
   otherwise become `latest` and be served to every install, because the publish
   is a bare `npm publish` and npm does not read the version.
 
-In CI the release command runs `npm publish` and nothing else. The version bump,
-the tag and the changelog all happen on your machine.
+The same command behaves differently in the two places. On your machine it runs
+release-it: lint, build, bump, changelog, commit, tag, push, and **no publish**.
+In CI it skips all of that and runs lint, build, then `npm publish` with
+provenance. So the version bump and the tag happen on your machine, and only the
+publish happens in CI.
 
-`release-it` regenerates `.auto-changelog.md` from git history as it bumps.
-`CHANGELOG.md` is written by hand and is the real one. Keep it that way — the
-generated file is ignored by git.
+While bumping, release-it also regenerates `.auto-changelog.md` from git
+history. `CHANGELOG.md` is written by hand and is the real one — the generated
+file is pointed elsewhere and ignored by git, so it cannot overwrite it.
 
 ## If a bad version reaches npm
 

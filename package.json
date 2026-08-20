@@ -41,7 +41,8 @@
     "vendor:skill": "node scripts/vendor-skill.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "NOTICE"
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,

@@ -53,14 +53,25 @@ const resolveRef = async () => {
 const rawUrl = (ref, path) => `https://raw.githubusercontent.com/${REPO}/${ref}/skills/shotstack/${path}`;
 const blobUrl = (ref, path) => `https://github.com/${REPO}/blob/${ref}/skills/shotstack/${path}`;
 
+/** Resolves a link written inside `from` against the skill's own folder. */
+const resolveLink = (from, link) => {
+	const parts = from.split('/').slice(0, -1).concat(link.split('/'));
+	const out = [];
+	for (const part of parts) {
+		if (part === '.' || part === '') continue;
+		if (part === '..') out.pop();
+		else out.push(part);
+	}
+	return out.join('/');
+};
+
 /**
  * Turns a file written for a file-reading agent into text that stands alone.
  *
  * The skill tells its reader to open `references/motion.md`. Pasted into an n8n
- * field, nothing can open that, so a model is left following a dead
- * instruction. Relative links become addresses a model can actually fetch.
+ * field nothing can, so a model is left following a dead instruction.
  */
-const flatten = (markdown, ref) =>
+const flatten = (markdown, ref, from) =>
 	markdown
 		// Line endings first. The frontmatter pattern below anchors on \n, so a
 		// file served with CRLF would keep its frontmatter and hand a model a
@@ -69,17 +80,18 @@ const flatten = (markdown, ref) =>
 		// Drop the YAML frontmatter. It configures a skill runner, and says
 		// nothing a model needs to write a recipe.
 		.replace(/^---\n[\s\S]*?\n---\n/, '')
-		// ](shared/agent-core.md), ](./references/svg.md) and ](../references/svg.md).
-		.replace(
-			/\]\((?:\.{1,2}\/)?((?:shared|references)\/[a-z0-9-]+\.md)\)/gi,
-			(m, path) => `](${blobUrl(ref, path)})`,
+		// Every markdown link, however it is written. An earlier version required
+		// a shared/ or references/ prefix, so sibling links like ](html5.md) —
+		// six of them — stayed relative and pointed at nothing.
+		.replace(/\]\(([^)\s]+\.md)\)/gi, (whole, link) =>
+			/^[a-z]+:/i.test(link) ? whole : `](${blobUrl(ref, resolveLink(from, link))})`,
 		)
 		.trim();
 
 const fetchFile = async (ref, path) => {
 	const response = await fetch(rawUrl(ref, path));
 	if (!response.ok) throw new Error(`${path} -> HTTP ${response.status}. Has the skill moved?`);
-	return flatten(await response.text(), ref);
+	return flatten(await response.text(), ref, path);
 };
 
 const join = async (ref, paths) => {
@@ -91,6 +103,17 @@ const join = async (ref, paths) => {
 };
 
 const ref = await resolveRef();
+
+// Report and stop, before writing. Writing first left the tree holding a skill
+// vendored at master while PIN still named the old commit, and nothing else
+// checks the two agree — so the node would ship text nobody pinned while
+// rulesSource told users it came from somewhere else.
+if (wantLatest && ref !== PIN) {
+	console.log(`master is ${ref.slice(0, 7)}, PIN is ${PIN.slice(0, 7)}. Nothing written.`);
+	console.log(`Set PIN to ${ref}, then run without --latest and commit both files.`);
+	process.exit(1);
+}
+
 const core = await join(ref, CORE);
 const topics = await join(ref, TOPICS);
 
@@ -100,9 +123,17 @@ const header = [
 	"SHOTSTACK'S OFFICIAL RULES FOR WRITING AN EDIT.",
 	`Source: ${REPO} at ${ref.slice(0, 7)}, Apache-2.0. Maintained by Shotstack.`,
 	'',
-	'You are writing JSON for an n8n workflow, not running a terminal. Where the',
-	'text below suggests the shotstack command, treat it as optional: a person can',
-	'install it to check a recipe, but you cannot run it. Everything else applies.',
+	'Three things before you read it. It was written for an agent at a terminal;',
+	'you are writing JSON for an n8n workflow.',
+	'',
+	'1. Do not fetch anything. The rules below open by telling you to download the',
+	'   schema. It is already above, under SHOTSTACK RECIPE REFERENCE, and it is',
+	'   the exhaustive list. You have no way to fetch, and no need to.',
+	'2. You cannot run the shotstack command. Where the text uses it, that is a',
+	'   person checking a recipe by hand. Skip those steps.',
+	'3. Where the rules and the reference above disagree on which asset types are',
+	'   current, the reference wins. It is generated from the schema; the rules are',
+	'   pinned text and can lag. The REPLACED list above is the authority.',
 	'',
 	'Put the JSON you produce in the Edit field of Render From Recipe.',
 ].join('\n');
@@ -115,11 +146,11 @@ const ts = `// GENERATED FILE. Do not edit by hand.
 
 export const SKILL_SOURCE = ${JSON.stringify({ repo: REPO, ref, license: 'Apache-2.0', url: blobUrl(ref, 'SKILL.md') }, null, 1)};
 
-export const SKILL_HEADER = ${JSON.stringify(header)};
+export const SKILL_HEADER: string = ${JSON.stringify(header)};
 
-export const SKILL_CORE = ${JSON.stringify(core)};
+export const SKILL_CORE: string = ${JSON.stringify(core)};
 
-export const SKILL_TOPICS = ${JSON.stringify(topics)};
+export const SKILL_TOPICS: string = ${JSON.stringify(topics)};
 `;
 
 writeFileSync(new URL('../nodes/Shotstack/reference/skill.ts', import.meta.url), ts);
@@ -128,8 +159,3 @@ console.log(`vendored ${REPO} at ${ref.slice(0, 7)}`);
 console.log(`  core   ${CORE.length} files, ${core.length} chars`);
 console.log(`  topics ${TOPICS.length} files, ${topics.length} chars`);
 console.log(`  left out ${EXCLUDED}`);
-if (wantLatest && ref !== PIN) {
-	console.log(`\nPIN in this script is ${PIN.slice(0, 7)} but master is ${ref.slice(0, 7)}.`);
-	console.log('Update PIN, re-run without --latest, and commit both files together.');
-	process.exitCode = 1;
-}

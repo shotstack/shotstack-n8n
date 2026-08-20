@@ -1,0 +1,27 @@
+@shotstack/n8n-nodes-shotstack
+Copyright (c) 2026 Shotstack Pty Ltd
+Licensed under the MIT Licence. See LICENSE.md.
+
+This package redistributes material licensed under the Apache Licence 2.0.
+
+  Shotstack agent skill
+  From:     https://github.com/shotstack/shotstack-cli
+  Commit:   671d476a6d6e071fb48dfb073fc3038f2fdd70de
+  Licence:  Apache-2.0
+  Ships as: dist/nodes/Shotstack/reference/skill.js
+
+Modified when vendored, by scripts/vendor-skill.mjs. The changes are mechanical
+and do not alter the meaning:
+
+  - YAML frontmatter removed. It configures a skill runner.
+  - Relative links rewritten to addresses on github.com, because the reader is
+    an AI inside an n8n workflow and cannot open a file on disk.
+  - Three files left out, being the command-line tool's manual rather than
+    guidance on writing an edit: SKILL.md, references/ingest.md and
+    references/onboarding.md.
+  - A short note prepended, marked as ours, explaining the reader's situation.
+
+The exact source commit also travels with the data, as SKILL_SOURCE, so it can
+be read at runtime rather than only found here.
+
+Apache Licence 2.0: https://www.apache.org/licenses/LICENSE-2.0

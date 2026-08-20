@@ -102,18 +102,24 @@ const typeOfSchema = Object.fromEntries(
 		.filter(([, t]) => t),
 );
 
+// Take only the replacement type, never the property advice around it. The
+// notices name inputSrc on a video and voice on an audio, and the schema's own
+// validator rejects both — the real keys are src and options.voice. Prose and
+// schema disagree, so trust the schema.
+//
+// Two phrasings are in use: "is deprecated. Use [X]" and "is deprecated, use
+// the [X] instead". Matching one silently dropped half the rows.
+const REPLACEMENT = /is deprecated[.,]\s*[Uu]se (?:the )?\[?([A-Z]\w*Asset)\]?/;
+
 const replaced = [];
 for (const key of Object.keys(S).filter((k) => /Asset$/.test(k))) {
 	const type = S[key].properties?.type?.enum?.[0];
-	const notice = String(S[key].description ?? '').match(/is deprecated\.\s*(Use [^*]+?)\s*\*\*/);
-	if (type && S[key].deprecated && notice) {
-		const advice = notice[1]
-			.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-			.replace(/\b([A-Z]\w+Asset)\b/g, (m) => (typeOfSchema[m] ? `the "${typeOfSchema[m]}" asset` : m))
-			.replace(/\s+/g, ' ')
-			.trim();
-		replaced.push(`  "${type}"`.padEnd(19) + advice);
-	}
+	const target = String(S[key].description ?? '').match(REPLACEMENT)?.[1];
+	const replacement = typeOfSchema[target];
+	if (!type || !S[key].deprecated || !replacement) continue;
+
+	const withPrompt = S[replacement === type ? key : target]?.properties?.prompt ? ', giving it a prompt' : '';
+	replaced.push(`  "${type}"`.padEnd(19) + `use "${replacement}" instead${withPrompt}`);
 }
 if (replaced.length) {
 	out.push('', 'REPLACED. These still render, but use the newer form instead.', ...replaced);
@@ -132,7 +138,7 @@ const ts = `// GENERATED FILE. Do not edit by hand.
 // Rebuild with: node scripts/build-reference.mjs
 // Generated from the @shotstack/schemas package.
 
-export const RECIPE_REFERENCE = ${JSON.stringify(body)};
+export const RECIPE_REFERENCE: string = ${JSON.stringify(body)};
 `;
 writeFileSync(new URL('../nodes/Shotstack/reference/recipeReference.ts', import.meta.url), ts);
 console.log('wrote recipeReference.ts —', body.length, 'chars');

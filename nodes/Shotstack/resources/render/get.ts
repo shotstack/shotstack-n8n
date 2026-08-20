@@ -47,7 +47,7 @@ const waitForRender = async function (
 	let last = 'unknown';
 	let lastCode = 0;
 
-	while (Date.now() < deadline) {
+	for (let attempt = 0; Date.now() < deadline; attempt++) {
 		let response: { statusCode: number; body: IDataObject } | undefined;
 		try {
 			response = (await this.helpers.httpRequestWithAuthentication.call(this, 'shotstackApi', {
@@ -75,7 +75,11 @@ const waitForRender = async function (
 		// Shotstack answers 400 for an ID it does not hold, not 404. Waiting can
 		// never turn that into a render, and the usual cause is a sandbox ID read
 		// with a production key.
-		if (response?.statusCode === 400 || response?.statusCode === 404) {
+		//
+		// Not on the first poll though. Render ID defaults to the id from the
+		// previous step, so this often runs a second after the render was
+		// created, and a gateway or a read-after-write lag can answer 400 once.
+		if (attempt > 0 && (response?.statusCode === 400 || response?.statusCode === 404)) {
 			throw new NodeOperationError(this.getNode(), 'Shotstack has no render with that ID', {
 				description:
 					'Check the Render ID, and check that the credential uses the same environment that started the render.',

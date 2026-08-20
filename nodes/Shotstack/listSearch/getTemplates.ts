@@ -4,6 +4,7 @@ import type {
 	INodeListSearchResult,
 	IDataObject,
 } from 'n8n-workflow';
+import { USER_AGENT } from '../userAgent';
 
 type TemplateSummary = {
 	id: string;
@@ -27,6 +28,8 @@ export async function getTemplates(
 		method: 'GET',
 		url: `https://api.shotstack.io/edit/${environment}/templates`,
 		json: true,
+		timeout: 30000,
+		headers: { 'User-Agent': USER_AGENT },
 	})) as IDataObject;
 
 	const payload = (response?.response ?? {}) as IDataObject;
