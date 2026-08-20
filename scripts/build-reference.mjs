@@ -34,7 +34,11 @@ const typeOf = (v, depth = 0) => {
 	const d = deref(v) || {};
 	if (d.enum) {
 		const joined = d.enum.join('|');
-		return joined.length > LONG_ENUM ? `<one of ${d.enum.length}, listed below>` : joined;
+		// Say when the members are numbers. output.fps is [12,15,23.976,…] and
+		// printed exactly like the string enum next to it, so "fps": "25" reads
+		// as reasonable and the API rejects it.
+		const kind = d.enum.every((v) => typeof v === 'number') ? ' (numbers)' : '';
+		return (joined.length > LONG_ENUM ? `<one of ${d.enum.length}, listed below>` : joined) + kind;
 	}
 	if (d.oneOf) return [...new Set(d.oneOf.map((o) => typeOf(o, depth + 1)))].join('|');
 	if (d.type === 'array') return `${typeOf(d.items, depth + 1)}[]`;
@@ -62,14 +66,15 @@ const out = [
 	'',
 	// Do not name soundtrack here. It is deprecated, and this sentence is the
 	// first structural thing a model reads, so it outweighs the rules below.
-	'A recipe is: { "timeline": { "background", "fonts", "tracks" }, "output": {...} }',
+	'A recipe is: { "timeline": { "background", "fonts", "tracks" }, "output": {...}, "merge": [...] }',
+	'merge is a top level list of { "find", "replace" }, a sibling of timeline, not a clip property.',
 	'tracks is an array of { "clips": [...] }. TRACK 0 IS THE TOP LAYER. Background media goes in the LAST track.',
 	'',
-	// width and height belong here. They are clip properties, and the rules
-	// below tell the model to size text with them, so leaving them out of the
-	// grammar contradicts the rules.
+	// Keep this list in step with what the rules below tell a model to use.
+	// width and height size text; alias names a clip so another can inherit its
+	// start or length. Omitting either made the grammar contradict the rules.
 	'CLIP',
-	line('', S.Clip, ['asset', 'start', 'length', 'width', 'height', 'fit', 'scale', 'position', 'offset', 'transition', 'effect', 'filter', 'opacity']),
+	line('', S.Clip, ['asset', 'start', 'length', 'width', 'height', 'fit', 'scale', 'position', 'offset', 'transition', 'effect', 'filter', 'opacity', 'transform', 'alias']),
 	'',
 	'ASSET TYPES',
 ];
