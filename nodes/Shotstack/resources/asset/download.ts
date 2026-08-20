@@ -79,6 +79,16 @@ const attachDownloadedFile: PostReceiveAction = async function (
 
 	const contentType = String(response.headers?.['content-type'] ?? '').split(';')[0].trim();
 
+	// A URL that answers 200 with a web page saves as a video that will not play,
+	// and the workflow reports success. Name it here instead.
+	if (/^text\/html$/i.test(contentType)) {
+		throw new NodeOperationError(this.getNode(), 'That URL returned a web page, not a file', {
+			description:
+				'Check the File URL. It should be the url from Get Asset by Render ID, which looks like https://cdn.shotstack.io/...',
+			itemIndex: this.getItemIndex(),
+		});
+	}
+
 	// Never Buffer.from(string) here. That decodes as utf8 and every byte above
 	// 127 becomes U+FFFD, which writes a corrupt file and reports success.
 	const body = response.body as unknown;
@@ -126,6 +136,8 @@ export const downloadDescription: INodeProperties[] = [
 				baseURL: '',
 				url: '={{ $value }}',
 				method: 'GET',
+				// The node default asks a CDN for JSON. This request wants bytes.
+				headers: { Accept: '*/*' },
 				// Ask for raw bytes rather than parsed JSON.
 				encoding: 'arraybuffer',
 				json: false,

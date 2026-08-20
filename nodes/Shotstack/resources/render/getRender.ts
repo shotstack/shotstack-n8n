@@ -209,6 +209,9 @@ export const getRenderDescription: INodeProperties[] = [
 							duration: '={{$responseItem.duration}}',
 							renderTime: '={{$responseItem.renderTime}}',
 							error: '={{$responseItem.error}}',
+							// Without this, Include Submitted Edit returns nothing while
+							// Simplify is on, and both are shown at their defaults.
+							data: '={{$responseItem.data}}',
 						},
 					},
 				],

@@ -50,6 +50,15 @@ const buildRenderBody: PreSendAction = async function (
 		edit = (raw ?? {}) as IDataObject;
 	}
 
+	// A bare string, number or array parses cleanly and then spreads into a body
+	// of numbered keys, which Shotstack rejects with nothing the user can act on.
+	if (edit === null || typeof edit !== 'object' || Array.isArray(edit)) {
+		throw new NodeOperationError(this.getNode(), 'The Edit field is not a Shotstack edit', {
+			description: `An edit is a JSON object with a timeline and an output. Got ${Array.isArray(edit) ? 'an array' : typeof edit}.`,
+			itemIndex: this.getItemIndex(),
+		});
+	}
+
 	const callback = String(this.getNodeParameter('callback', '') ?? '').trim();
 	requestOptions.body = callback ? { ...edit, callback } : edit;
 	return requestOptions;

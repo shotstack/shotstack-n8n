@@ -36,8 +36,10 @@ First version. Published as `@shotstack/n8n-nodes-shotstack`.
   credential test. The node sends the API key to `api.shotstack.io` and to no
   other host. An automated test verifies this against the built output on every
   release.
-- **Callback URL** on both render operations, so a workflow can continue from a
-  Webhook node instead of chaining a Wait node and polling.
+- **Callback URL** on Render Asset, so a workflow can continue from a Webhook
+  node instead of chaining a Wait node and polling. Render Template has no
+  callback field: the Edit API accepts one on `POST /templates/render` and does
+  not act on it.
 - Responses are unwrapped from Shotstack's response envelope, so workflows read
   `{{$json.id}}`.
 - `usableAsTool` is enabled, so n8n AI Agent nodes can call the node directly.

@@ -79,9 +79,11 @@ Renders a template saved in your Shotstack account, filling in its placeholders.
 | **Template** | Pick one from the list, or paste an ID. Templates are made in [Shotstack Studio](https://shotstack.io/studio/). |
 | **Merge Fields Source** | **Fields** for find/replace pairs, or **JSON** to supply the whole list at once. |
 | **Merge Fields** | The find value is the placeholder name without braces. See [Merging data](https://shotstack.io/docs/guide/architecting-an-application/merging-data/). |
-| **Callback URL** | Optional, as above. |
 
-Returns the render `id`.
+Returns the render `id`. This operation takes no Callback URL: the Edit API
+accepts one on `POST /templates/render` and does not act on it. Use
+**Wait for the Render To Finish**, or render the template's edit with
+**Render Asset**, which does support a callback.
 
 ### Render → Get Render Status
 
@@ -109,7 +111,7 @@ Returns the permanent CDN URL for a finished render.
 | --- | --- |
 | **Render ID** | The id returned by either render operation. |
 | **Main File Only** | On by default. Off returns [every asset the render produced](https://shotstack.io/docs/guide/serving-assets/serve-api/), one item each. |
-| **Simplify** | On by default. Returns `id`, `renderId`, `url`, `filename`, `filesize` and `status`. |
+| **Simplify** | On by default. Returns `id`, `renderId`, `url`, `filename` and `status`. |
 
 Use this for any URL you store, email, publish or hand to another system.
 

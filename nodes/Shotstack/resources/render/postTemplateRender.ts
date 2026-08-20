@@ -1,8 +1,67 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INodeProperties,
+	PreSendAction,
+} from 'n8n-workflow';
 
 const showOnly = {
 	resource: ['render'],
 	operation: ['postTemplateRender'],
+};
+
+/**
+ * Puts the merge list on the body, from whichever source the user chose.
+ *
+ * Keep this out of a routing expression. parseJson throws there, and an
+ * expression that throws fails the whole node rather than the item, so
+ * Continue On Fail never sees it and earlier renders are billed with no
+ * output. A blank JSON field is the common way in: the field's own default
+ * is an empty string.
+ */
+const buildMerge: PreSendAction = async function (
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+) {
+	const source = this.getNodeParameter('mergeSource', 'fields') as string;
+	const body = (requestOptions.body ?? {}) as IDataObject;
+	let merge: unknown;
+
+	if (source === 'json') {
+		const raw = this.getNodeParameter('mergeJson', '') as string | unknown[];
+		if (typeof raw === 'string') {
+			const text = raw.trim();
+			if (text) {
+				try {
+					merge = JSON.parse(text);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), 'Merge Fields (JSON) is not valid JSON', {
+						description: `${(error as Error).message}. Expected [{"find": "HEADLINE", "replace": "Hello"}].`,
+						itemIndex: this.getItemIndex(),
+					});
+				}
+			}
+		} else {
+			merge = raw;
+		}
+	} else {
+		const typed = this.getNodeParameter('merge', {}) as IDataObject;
+		merge = Array.isArray(typed) ? typed : (typed?.mergeFields as unknown[] | undefined);
+	}
+
+	if (merge !== undefined && !Array.isArray(merge)) {
+		throw new NodeOperationError(this.getNode(), 'Merge fields must be a list', {
+			description: `Expected [{"find": "HEADLINE", "replace": "Hello"}] and got ${typeof merge}.`,
+			itemIndex: this.getItemIndex(),
+		});
+	}
+
+	// Leave the key out of an empty body rather than sending [].
+	if (Array.isArray(merge) && merge.length > 0) body.merge = merge;
+	requestOptions.body = body;
+	return requestOptions;
 };
 
 export const postTemplateRenderDescription: INodeProperties[] = [
@@ -48,6 +107,7 @@ export const postTemplateRenderDescription: INodeProperties[] = [
 				type: 'body',
 				property: 'id',
 				value: '={{ $value }}',
+				preSend: [buildMerge],
 			},
 		},
 	},
@@ -82,15 +142,6 @@ export const postTemplateRenderDescription: INodeProperties[] = [
 		displayOptions: { show: { ...showOnly, mergeSource: ['json'] } },
 		description:
 			'A list of find and replace pairs. Send every placeholder the template declares — one you leave out is not filled in from the template, it stays as raw text, and an image or video placeholder then fails the render.',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'merge',
-				// parseJson, not JSON.parse. The expression engine swallows a
-				// SyntaxError and would send an empty body instead of failing.
-				value: '={{ typeof $value === "string" ? $value.parseJson() : $value }}',
-			},
-		},
 	},
 	{
 		displayName: 'Merge Fields',
@@ -125,33 +176,5 @@ export const postTemplateRenderDescription: INodeProperties[] = [
 				],
 			},
 		],
-		routing: {
-			send: {
-				type: 'body',
-				property: 'merge',
-				// Two shapes arrive here: the fixedCollection's own
-				// { mergeFields: [...] }, and a bare array from an earlier node or an
-				// AI agent. undefined, not [], keeps the key out of an empty body.
-				value:
-					'={{ Array.isArray($value) ? $value : ($value?.mergeFields?.length ? $value.mergeFields : undefined) }}',
-			},
-		},
-	},
-	{
-		displayName: 'Callback URL',
-		name: 'callback',
-		type: 'string',
-		default: '',
-		placeholder: 'https://your-n8n/webhook/shotstack-done',
-		displayOptions: { show: showOnly },
-		description: 'Shotstack posts the finished render here. Point it at an n8n Webhook node so the workflow continues on its own, instead of waiting and polling.',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'callback',
-				// Send undefined when blank. lodash merge skips undefined, not ''.
-				value: '={{ $value || undefined }}',
-			},
-		},
 	},
 ];

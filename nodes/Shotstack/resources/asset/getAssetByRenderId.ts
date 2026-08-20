@@ -158,9 +158,16 @@ const waitForHostedAsset = async function (
 		});
 	}
 
-	const attempts = Math.ceil(MAX_WAIT_MS / POLL_GAP_MS);
+	// Only the files this step will return. With Main File Only on, a ready
+	// poster is not an answer: Shotstack often publishes it before the video.
+	const mainFileOnly = this.getNodeParameter('mainFileOnly', true) as boolean;
 
-	for (let attempt = 0; attempt < attempts; attempt++) {
+	// A deadline, not an attempt count. Counting attempts ignores how long each
+	// request takes, so 40 polls behind a 30-second timeout could hold the
+	// execution for twenty minutes and still report two minutes.
+	const deadline = Date.now() + MAX_WAIT_MS;
+
+	for (let attempt = 0; Date.now() < deadline; attempt++) {
 		let response: { statusCode: number; body: IDataObject } | undefined;
 		try {
 			response = (await this.helpers.httpRequestWithAuthentication.call(this, 'shotstackApi', {
@@ -195,35 +202,47 @@ const waitForHostedAsset = async function (
 		}
 
 		if (response?.statusCode === 200) {
-			// A render can host more than one file: the video, and a poster or
-			// thumbnail. Wait for all of them, or the next step can be handed a
-			// poster image while the video is still uploading.
+			// A render can host several files: the rendered file, a poster and a
+			// thumbnail, each published separately.
 			const assets = (response.body?.data ?? []) as IDataObject[];
-			const states = assets.map((a) => (a.attributes as IDataObject)?.status);
+			const files = assets.map((asset) => {
+				const attributes = (asset.attributes ?? {}) as IDataObject;
+				return {
+					name: String(attributes.filename ?? attributes.url ?? '').split('?')[0],
+					status: attributes.status,
+				};
+			});
 
-			if (states.some((s) => s === 'failed')) {
-				throw new NodeOperationError(this.getNode(), 'Shotstack did not publish the file', {
-					description: 'The render is complete. Send this render ID to Shotstack support.',
-					itemIndex: this.getItemIndex(),
-				});
-			}
 			// A deleted file never becomes ready, so waiting for it would burn the
 			// full two minutes. But an aged-out thumbnail must not fail a render
 			// whose video is fine, so only give up when nothing is left.
-			const live = states.filter((s) => s !== 'deleted');
-			if (states.length > 0 && live.length === 0) {
+			const live = files.filter((file) => file.status !== 'deleted');
+			if (files.length > 0 && live.length === 0) {
 				throw new NodeOperationError(this.getNode(), 'Shotstack has deleted the files for this render', {
 					description:
 						'The render is complete, and its hosted files are gone. Shotstack removes Sandbox files after a retention period. Render it again.',
 					itemIndex: this.getItemIndex(),
 				});
 			}
-			if (live.length > 0 && live.every((s) => s === 'ready')) {
-				// Run the real request so the output goes through Simplify.
-				return await this.makeRoutingRequest(requestData);
+
+			const wanted = mainFileOnly ? live.filter((file) => !EXTRA_FILES.test(file.name)) : live;
+
+			// Every wanted file has stopped moving, so this is the answer.
+			const settled =
+				wanted.length > 0 && wanted.every((f) => f.status === 'ready' || f.status === 'failed');
+			if (settled) {
+				if (wanted.some((file) => file.status === 'ready')) {
+					// Run the real request so the output goes through Simplify.
+					return await this.makeRoutingRequest(requestData);
+				}
+				throw new NodeOperationError(this.getNode(), 'Shotstack did not publish the file', {
+					description: 'The render is complete. Send this render ID to Shotstack support.',
+					itemIndex: this.getItemIndex(),
+				});
 			}
 		}
 
+		if (Date.now() + POLL_GAP_MS >= deadline) break;
 		await sleep(POLL_GAP_MS);
 	}
 
@@ -289,7 +308,6 @@ export const getAssetByRenderIdDescription: INodeProperties[] = [
 							renderId: '={{$responseItem.attributes?.renderId}}',
 							url: '={{$responseItem.attributes?.url}}',
 							filename: '={{$responseItem.attributes?.filename}}',
-							filesize: '={{$responseItem.attributes?.filesize}}',
 							status: '={{$responseItem.attributes?.status}}',
 						},
 					},
