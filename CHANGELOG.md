@@ -50,7 +50,8 @@ First version. Published as `@shotstack/n8n-nodes-shotstack`.
   callback field: the Edit API accepts one on `POST /templates/render` and does
   not act on it.
 - Responses are unwrapped from Shotstack's response envelope, so workflows read
-  `{{$json.id}}`.
+  `{{$json.id}}`. Get Asset by Render ID returns a hosted file rather than a
+  render, so it names the render `renderId` and the file `assetId`.
 - `usableAsTool` is enabled, so n8n AI Agent nodes can call the node directly.
 - Render Asset refuses an edit that still holds an unevaluated n8n expression.
   A field left in fixed mode passes text like `{{ $json.videoUrl }}` through

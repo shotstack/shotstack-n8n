@@ -152,7 +152,7 @@ const attachDownloadedFile: PostReceiveAction = async function (
 	);
 
 	// The body is the file, so it makes a poor json payload. Carry the incoming
-	// fields through instead, so a later step can read {{ $json.id }}.
+	// fields through instead, so a later step can still read the render id.
 	const incoming = (this.getInputData()?.json ?? {}) as IDataObject;
 	return items.map(() => ({ json: incoming, binary: { data: binary } }));
 };

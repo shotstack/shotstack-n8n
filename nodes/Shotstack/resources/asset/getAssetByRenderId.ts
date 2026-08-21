@@ -162,7 +162,7 @@ const waitForHostedAsset = async function (
 	// The wait loop below builds its own requests, so check the ID here too.
 	if (!isRenderId(renderId)) {
 		throw new NodeOperationError(this.getNode(), 'That is not a Shotstack render ID', {
-			description: `A render ID looks like 4a37ef85-b4d1-4b4a-90be-6515290c5091. Got "${renderId}". The render actions return it as "id".`,
+			description: `A render ID looks like 4a37ef85-b4d1-4b4a-90be-6515290c5091. Got "${renderId}". A render action returns it as "id".`,
 			itemIndex: this.getItemIndex(),
 		});
 	}
@@ -295,8 +295,9 @@ export const getAssetByRenderIdDescription: INodeProperties[] = [
 		name: 'renderId',
 		type: 'string',
 		required: true,
-		// Both render operations return the id as "id", so the chain needs no setup.
-		default: '={{ $json.id }}',
+		// A render step returns the render as "id"; this step returns it as
+		// "renderId". Read either, so any chain works with no setup.
+		default: '={{ $json.renderId || $json.id }}',
 		placeholder: '4a37ef85-b4d1-4b4a-90be-6515290c5091',
 		displayOptions: { show: showOnly },
 		description:
@@ -343,7 +344,11 @@ export const getAssetByRenderIdDescription: INodeProperties[] = [
 						type: 'setKeyValue',
 						enabled: '={{$value}}',
 						properties: {
-							id: '={{$responseItem.attributes?.id}}',
+							// assetId, not id. The spec names this field id inside an
+							// asset object, but Simplify flattens that object away, and
+							// id means the render everywhere else in this node. Both
+							// Render ID fields read the id on the incoming item.
+							assetId: '={{$responseItem.attributes?.id}}',
 							renderId: '={{$responseItem.attributes?.renderId}}',
 							url: '={{$responseItem.attributes?.url}}',
 							filename: '={{$responseItem.attributes?.filename}}',
