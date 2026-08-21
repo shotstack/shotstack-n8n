@@ -172,6 +172,20 @@ npm pack
    request.
 5. Merge `dev` into `main`. Only a tag on `main` publishes.
 
+**This file must never land on `main`.** It is internal. Merging `dev` into
+`main` will try to bring it back, and if you edited it since the last merge git
+reports a modify/delete conflict on it. Either way the fix is the same:
+
+```bash
+git checkout main
+git merge dev
+git rm .github/CONTRIBUTING.md     # resolves the conflict, or removes the re-add
+git commit
+```
+
+`node scripts/review-check.mjs` fails if the file is on `main`, wherever you run
+it, so a forgotten step shows up rather than shipping.
+
 Adding an operation is a product decision. Ask the owner first.
 
 ## Releasing
