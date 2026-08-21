@@ -251,6 +251,59 @@ check('Docs', 'no markdown file beyond the essential set', () => {
 	];
 	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(', ') : found.join(', ') };
 });
+// A doc that names a file, an anchor or a command is making a claim. Check the
+// claim. This is the whole class of error a reader spots at a glance, which is
+// how this review started.
+check('Docs', 'every path, anchor and command the docs name really exists', () => {
+	const wrong = [];
+	const files = sh('git ls-files "*.md"').split('\n').filter(Boolean);
+	const tree = sh('git ls-files').split('\n').filter(Boolean);
+	const properties = node().description.properties;
+
+	for (const doc of files) {
+		const text = readFileSync(doc, 'utf8');
+		const dir = doc.includes('/') ? doc.slice(0, doc.lastIndexOf('/')) : '.';
+		const anchors = [...text.matchAll(/^#+ (.+)$/gm)].map((m) =>
+			m[1].toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-'),
+		);
+
+		text.split('\n').forEach((line, i) => {
+			const at = `${doc}:${i + 1}`;
+			for (const m of line.matchAll(/\]\((?!https?:|#|mailto:)([^)#]+)/g)) {
+				if (!existsSync(resolve(dir, m[1]))) wrong.push(`${at} dead link ${m[1]}`);
+			}
+			for (const m of line.matchAll(/\]\((#[^)]+)\)/g)) {
+				if (!anchors.includes(m[1].slice(1))) wrong.push(`${at} dead anchor ${m[1]}`);
+			}
+			for (const m of line.matchAll(/`((?:nodes|credentials|scripts|test|icons)\/[\w./-]+)`/g)) {
+				const named = m[1].replace(/\/$/, '');
+				if (!existsSync(named) && !tree.some((f) => f.startsWith(`${named}/`))) {
+					wrong.push(`${at} no such path ${m[1]}`);
+				}
+			}
+			for (const m of line.matchAll(/npm run ([\w:]+)/g)) {
+				if (!pkg.scripts[m[1]]) wrong.push(`${at} npm run ${m[1]} is not a script`);
+			}
+			for (const m of line.matchAll(/node ((?:scripts|test)\/[\w.-]+)/g)) {
+				if (!existsSync(m[1])) wrong.push(`${at} node ${m[1]} does not exist`);
+			}
+			// A number quoted for a field must be the number the field ships. The
+			// README advertised "10 by default, 60 at most" for a week after the
+			// values became 5 and 10, and no name-matching check could see it.
+			// [^\n] not [^|]: the field name and its numbers sit in different
+			// cells of a markdown table, so the match has to cross a pipe.
+			for (const m of line.matchAll(/\*\*([A-Z][\w ()]+?)\*\*[^\n]*?(\d+) by default, (\d+) at most/g)) {
+				const field = properties.find((p) => p.displayName === m[1].trim());
+				if (!field) continue;
+				const max = field.typeOptions?.maxValue;
+				if (String(field.default) !== m[2] || String(max) !== m[3]) {
+					wrong.push(`${at} ${m[1]} ships ${field.default}/${max}, docs say ${m[2]}/${m[3]}`);
+				}
+			}
+		});
+	}
+	return { ok: wrong.length === 0, actual: wrong.length ? wrong.slice(0, 3).join(' | ') : `${files.length} files, all references resolve` };
+});
 check('Docs', 'every README link resolves', () => {
 	const links = [...readFileSync('README.md', 'utf8').matchAll(/\]\((https?:\/\/[^)]+)\)/g)].map((m) => m[1]);
 	const anchors = [...readFileSync('README.md', 'utf8').matchAll(/\]\((#[^)]+)\)/g)].map((m) => m[1]);

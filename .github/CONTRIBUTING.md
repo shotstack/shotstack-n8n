@@ -17,6 +17,7 @@ job in the Shotstack dashboard. That usually settles it.
 | "Shotstack has no render with that ID" | The credential Environment does not match the key. A Production key cannot see a Sandbox render. |
 | "My webhook never fires" | They used Callback URL on Render Template. That field is gone. The API accepts a callback there and then discards it. Send them to Wait for the Render To Finish. |
 | Text renders as `{{ HEADLINE }}` | A partial merge. Shotstack replaces a template's merge list. It does not merge into it. Send every placeholder or send none. |
+| "The edit still contains an n8n expression" | Their Edit field is in fixed mode, so n8n never evaluated `{{ $json.something }}` and it would reach Shotstack as text. The node stops it. Tell them to switch the field to expression mode, or build the edit in an earlier step. |
 | The node will not install | Almost always n8n Cloud. Cloud installs verified nodes only. Your own n8n works today. |
 
 If it is a real defect, do this:
@@ -65,8 +66,14 @@ Break one of these and something fails quietly.
 
 - **Never add a runtime dependency.** n8n refuses to verify a community node
   that has one. Keep `dependencies` in `package.json` empty.
-- **Never edit `nodes/Shotstack/reference/`.** Both files are generated. CI
-  regenerates them and fails on any difference. Change the generator instead.
+- **Never edit a generated file.** Three are generated, and an edit to any of
+  them is lost on the next build or fails CI. Change the generator instead.
+
+  | Generated file | Written by |
+  | --- | --- |
+  | `nodes/Shotstack/reference/recipeReference.ts` | `scripts/build-reference.mjs` |
+  | `nodes/Shotstack/reference/skill.ts` | `scripts/vendor-skill.mjs` |
+  | `nodes/Shotstack/userAgent.ts` | `scripts/build-user-agent.mjs`, which `npm run build` runs first |
 - **Never rename an operation's `value`.** The value is the `operationId` from
   Shotstack's OpenAPI spec, and n8n saves it inside every user workflow. You may
   change a display name. You may not change a value.

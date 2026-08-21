@@ -122,7 +122,7 @@ Checks a render and returns its status.
 | --- | --- |
 | **Render ID** | The id returned by either render operation. The default reads it from the previous step. |
 | **Wait for the Render To Finish** | Off by default. On, the step keeps checking until the render is done — see [Waiting for a render](#waiting-for-a-render). |
-| **Give Up After (Minutes)** | Only shown when waiting. 10 by default, 60 at most. |
+| **Give Up After (Minutes)** | Only shown when waiting. 5 by default, 10 at most. Giving up does not stop the render. |
 | **Include Submitted Edit** | Off by default, so polling responses stay small. |
 | **Simplify** | On by default. Returns `id`, `status`, `url`, `poster`, `thumbnail`, `duration`, `renderTime` and `error`. |
 
@@ -201,18 +201,29 @@ This node unwraps Shotstack's response envelope, so read `{{$json.id}}`, not
 
 Rendering is asynchronous, so the render operations return an id, not a video.
 See [how long a render takes](https://shotstack.io/docs/guide/architecting-an-application/limitations/).
-There are three ways to get the finished file.
+There are four ways to get the finished file. Start at the top.
 
-### Wait for the Render To Finish (simplest)
+### Do nothing (most renders)
 
-Turn on **Wait for the Render To Finish** in **Render → Get Render Status**:
+```
+Shotstack (Render Asset) → Shotstack (Get Asset by Render ID) → next step
+```
+
+**Get Asset by Render ID** waits by itself, for up to two minutes. It covers
+both the render and the separate step where Shotstack publishes the file to the
+CDN, so most workflows need nothing else. No Wait node, no Switch, no loop.
+
+### Wait for the Render To Finish (renders over two minutes)
+
+Turn on **Wait for the Render To Finish** in **Render → Get Render Status**, and
+put it before Get Asset by Render ID:
 
 ```
 Shotstack (Render Asset) → Shotstack (Get Render Status, waiting) → Shotstack (Get Asset by Render ID) → next step
 ```
 
-No Wait node, no Switch, no loop. A failed render stops the step and reports the
-reason Shotstack gave, rather than looping.
+A failed render stops the step and reports the reason Shotstack gave, rather
+than looping.
 
 It holds the n8n execution open while it waits. **Give Up After** bounds that,
 and it allows up to 10 minutes. Nine in ten renders finish inside a minute.
