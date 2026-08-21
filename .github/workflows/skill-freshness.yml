@@ -1,10 +1,17 @@
-# Watches Shotstack's agent skill, which this node vendors.
+# Watches both halves of what the node tells an AI.
 #
-# Asks two questions. A skill we can no longer fetch fails the job, because that
-# breaks the vendoring silently. A skill that has merely moved on only reports,
-# because the pin is deliberate.
+# The craft half is Shotstack's agent skill, vendored at a pinned commit. The
+# allowed-values half is generated from @shotstack/schemas, pinned exact.
+#
+# CI already checks the generated files match the INSTALLED package. Nothing
+# checked whether the installed package is still current, so the half that
+# states what the API accepts could go stale while the vendored header tells
+# the model it is the authority. Confidently wrong is worse than absent.
+#
+# A pin we can no longer fetch fails the job, because that breaks the vendoring
+# silently. A pin that has merely moved on only reports, because it is deliberate.
 
-name: Skill freshness
+name: Reference freshness
 
 on:
   schedule:
@@ -33,6 +40,19 @@ jobs:
             echo "::error::skill.ts does not match the pinned commit. Run: npm run vendor:skill"
             git diff --stat -- nodes/Shotstack/reference/skill.ts
             exit 1
+          fi
+
+      - name: Report whether the schema package is behind
+        # Exact-pinned, so nothing bumps it on its own and no bot opens a PR.
+        run: |
+          pinned=$(node -p "require('./package.json').devDependencies['@shotstack/schemas']")
+          latest=$(npm view @shotstack/schemas version 2>/dev/null || true)
+          if [ -z "$latest" ]; then
+            echo "::notice::Could not read npm. Schema version not compared."
+          elif [ "$pinned" != "$latest" ]; then
+            echo "::notice::@shotstack/schemas moved on: pinned $pinned, latest $latest. To take it: npm install @shotstack/schemas@latest, node scripts/build-reference.mjs, commit both."
+          else
+            echo "The schema pin is current at $pinned."
           fi
 
       - name: Report whether the pin is behind

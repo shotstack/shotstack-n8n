@@ -34,12 +34,20 @@ const buildReference = async function (
 	const includeTemplates = this.getNodeParameter('includeTemplates', true) as boolean;
 	const detail = this.getNodeParameter('detail', 'core') as string;
 
+	// A declarative operation must send a request, so this one rides on
+	// /templates. The reference itself is in the package, so a refused key must
+	// not withhold it: an agent asking how to write an edit would get an auth
+	// error instead of the answer that prevents a failed render.
+	//
+	// Judge the body, not only the status. A proxy or a login redirect answers
+	// 200 with HTML, and a status check alone reads that as a real empty list.
+	const status = Number(response.statusCode ?? 0);
 	const body = (response.body ?? {}) as IDataObject;
 	const payload = (body.response ?? {}) as IDataObject;
-	const templates = ((payload.templates ?? []) as IDataObject[]).map((t) => ({
-		id: t.id,
-		name: t.name,
-	}));
+	const rows = Array.isArray(payload.templates) ? (payload.templates as IDataObject[]) : undefined;
+	const listed = status >= 200 && status < 300 && rows !== undefined;
+
+	const templates = (rows ?? []).map((t) => ({ id: t.id, name: t.name }));
 
 	const parts = [RECIPE_REFERENCE, SKILL_HEADER, SKILL_CORE];
 	if (detail === 'full' || detail === 'everything') parts.push(SKILL_TOPICS);
@@ -72,7 +80,18 @@ const buildReference = async function (
 
 	json.referenceChars = String(json.reference).length;
 
-	if (includeTemplates) {
+	if (!listed) {
+		json.credentialError =
+			status === 401 || status === 403
+				? `Shotstack refused the API key (${status}). The reference above is complete and correct, but a render will fail until the credential works. Check the key, and check that its Environment matches the key.`
+				: `Shotstack answered ${status} and did not return a template list. The reference above is complete. Nothing is wrong with it.`;
+	}
+
+	// Only claim a count when one was really read. An empty array here is
+	// indistinguishable from an account with no templates, so an agent would
+	// write an edit from nothing over the template the user already built.
+	// A missing key says "unknown". A zero says "none exist".
+	if (includeTemplates && listed) {
 		json.templates = templates;
 		json.templateCount = templates.length;
 	}
@@ -96,7 +115,17 @@ export const referenceDescription: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
+						// This request is not optional decoration. A declarative
+						// operation must send one, and postReceive replaces its answer
+						// with the reference. Remove it and the operation returns nothing.
 						url: '/templates',
+						// A refused key would otherwise throw before postReceive runs and
+						// withhold a reference that is already in the package.
+						//
+						// The listed codes still throw, on purpose. They are transient, and
+						// a thrown item is what n8n's Retry On Fail and Continue On Error
+						// act on. An item that "succeeded" is never retried.
+						ignoreHttpStatusErrors: { ignore: true, except: [408, 429, 500, 502, 503, 504] },
 					},
 					output: { postReceive: [buildReference] },
 				},
@@ -111,7 +140,7 @@ export const referenceDescription: INodeProperties[] = [
 		default: 'core',
 		displayOptions: { show: { ...showOnly, operation: ['getReference'] } },
 		description:
-			'How much to hand the model. Core is enough to write a good edit. The larger settings add depth on specific subjects, and need a model with a large context window',
+			'How much to hand the model. Core is enough to write a good edit. The larger settings add depth on specific subjects, and need a model with a large context window. This output does not depend on the input item, so put this step once after the trigger rather than inside a loop: it is tens of thousands of characters per item, and n8n keeps every one of them in the execution',
 		options: [
 			{
 				name: 'Core',
