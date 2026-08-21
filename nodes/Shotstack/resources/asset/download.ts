@@ -15,6 +15,16 @@ const showOnly = {
 	operation: ['download'],
 };
 
+/** Deliberately not a field. Nothing stores it, so it can move either way. */
+const MAX_DOWNLOAD_BYTES = 1024 * 1024 * 1024;
+
+const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} MB`;
+
+/** Named so a test can reach it without allocating a gigabyte. */
+export const tooLargeToLoad = (bytes: number) => bytes > MAX_DOWNLOAD_BYTES;
+
+export const downloadLimit = { bytes: MAX_DOWNLOAD_BYTES, label: megabytes(MAX_DOWNLOAD_BYTES) };
+
 /**
  * Stops the request when there is no URL to fetch.
  *
@@ -114,6 +124,25 @@ const attachDownloadedFile: PostReceiveAction = async function (
 			description: `Expected bytes and got ${typeof body}. The URL may point at a web page rather than a file.`,
 			itemIndex: this.getItemIndex(),
 		});
+	}
+
+	// Measured over 85,907 renders made from n8n: half are 9 MB, 99.84% are under
+	// a gigabyte, and the largest was 5.6 GB. prepareBinaryData makes a second
+	// copy, so an oversized file takes the whole n8n process down with an out of
+	// memory kill, not just this workflow, and the crash names n8n rather than
+	// this node. Refusing with an address to go to is better than that.
+	//
+	// Raising this is a one line change and breaks nothing: no user workflow
+	// stores it. Lowering it only ever refuses more downloads.
+	if (tooLargeToLoad(buffer.length)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`That file is ${megabytes(buffer.length)}, too large to download here`,
+			{
+				description: `This step loads the whole file into memory, so it stops at ${downloadLimit.label}. Send the render to a Shotstack destination instead, which writes it straight to your own storage and needs no download step. Or pass the URL to a later step and fetch it outside n8n.`,
+				itemIndex: this.getItemIndex(),
+			},
+		);
 	}
 
 	const binary = await this.helpers.prepareBinaryData(

@@ -483,8 +483,13 @@ check('Sanity', 'no export that nothing imports', () => {
 		const body = textOf(f);
 		for (const m of body.matchAll(/export const (\w+)/g)) {
 			const name = m[1];
-			// Imported by name anywhere, or re-exported. Same-file use does not count.
-			const importedElsewhere = new RegExp(`import[^;]*\\b${name}\\b[^;]*from`).test(imports);
+			// Imported by name anywhere, or re-exported. Same-file use does not
+			// count. The tests reach built output through createRequire, so a
+			// destructured require counts as a use too: without that this reads a
+			// tested export as dead and pushes you to delete it or stop testing it.
+			const importedElsewhere =
+				new RegExp(`import[^;]*\\b${name}\\b[^;]*from`).test(imports) ||
+				new RegExp(`\\{[^}]*\\b${name}\\b[^}]*\\}\\s*=\\s*require\\(`).test(imports);
 			if (!importedElsewhere) stray.push(`${name} in ${f}`);
 		}
 	}
