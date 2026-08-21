@@ -104,6 +104,16 @@ check('History', 'working tree clean', () => {
 const OAS = 'node_modules/@shotstack/schemas/dist/api.bundled.json';
 const OURS = new Set(['download', 'getReference']); // deliberately not API operations
 
+// Get Reference is ours, but the request under it is not: it issues the spec's
+// getTemplates call, which proves the key and lists the account's templates.
+// A declarative node cannot have an operation that sends no request.
+const BORROWS = { getReference: 'getTemplates' };
+
+// Download File is the only operation that calls no Shotstack endpoint at all.
+// Its target is user data, so there is no route to check. The properties that
+// keep it safe are checked instead, below.
+const NO_ENDPOINT = new Set(['download']);
+
 check('Follows the spec', 'every operation value is a real operationId', () => {
 	if (!existsSync(OAS)) return { ok: false, actual: 'run npm ci first' };
 	const oas = JSON.parse(readFileSync(OAS, 'utf8'));
@@ -182,19 +192,55 @@ check('Follows the spec', 'every operation calls the method and path the spec gi
 	};
 
 	const wrong = [];
+	let checked = 0;
 	for (const p of properties.filter((x) => x.name === 'operation')) {
 		for (const option of p.options ?? []) {
-			const expected = spec[option.value];
-			if (!expected) continue; // the two that are ours; covered by the next check
+			// An operation whose value is not an operationId may still call a real
+			// endpoint. Get Reference issues GET /templates, which the spec names
+			// getTemplates, so resolve it through the spec rather than declaring a
+			// path here: a path written beside the code it checks is not a check.
+			const expected = spec[BORROWS[option.value] ?? option.value];
+			if (!expected) continue;
+			checked += 1;
 			const actual = routeFor(option.value);
 			if (actual !== expected) wrong.push(`${option.value}: node sends "${actual}", spec says "${expected}"`);
 		}
 	}
-	const checked = Object.keys(spec).length && wrong.length === 0;
+
+	// Count the skips and assert the total. A bare `continue` lets an exemption
+	// widen in the same edit that breaks something; this way adding one changes
+	// a number the check compares. It also catches the whole spec failing to
+	// load, which previously left every operation skipped and the check green.
+	const total = properties
+		.filter((x) => x.name === 'operation')
+		.reduce((n, p) => n + (p.options ?? []).length, 0);
+	if (checked + NO_ENDPOINT.size !== total) {
+		wrong.push(`checked ${checked} of ${total} with ${NO_ENDPOINT.size} exempt: something was skipped silently`);
+	}
 	return {
 		ok: wrong.length === 0,
-		actual: wrong.length ? wrong.join(' | ') : checked ? 'all four match the spec exactly' : 'none checked',
+		actual: wrong.length ? wrong.join(' | ') : `${checked} routes checked against the spec, ${NO_ENDPOINT.size} exempt`,
 	};
+});
+check('Follows the spec', 'Download File cannot carry the API key to another host', () => {
+	// There is no route to check here: the target is whatever URL the workflow
+	// supplies. Two properties keep the key from following it, and neither is
+	// obvious enough to survive a tidy-up unasserted.
+	const properties = node().description.properties;
+	const field = properties.find((p) => p.name === 'fileUrl');
+	const missing = [];
+
+	// Without this the node baseURL applies, a relative or protocol relative
+	// url resolves against api.shotstack.io, and the credential attaches the key.
+	if (field?.routing?.request?.baseURL !== '') missing.push('fileUrl no longer blanks baseURL');
+
+	// The credential must treat a scheme-less // url as absolute, the way axios
+	// does, or it reads one as relative and falls back to baseURL.
+	const credential = readFileSync('dist/credentials/ShotstackApi.credentials.js', 'utf8');
+	if (!/\[a-z\]\[a-z\\d\+\\-\.\]\*:\)\?/.test(credential) && !credential.includes('a-z\\d+\\-.')) {
+		missing.push('the credential no longer matches axios on protocol relative urls');
+	}
+	return { ok: missing.length === 0, actual: missing.length ? missing.join('; ') : 'baseURL blanked, absolute-url rule matches axios' };
 });
 check('Follows the spec', 'the two non-spec operations say so', () => {
 	const missing = [];
