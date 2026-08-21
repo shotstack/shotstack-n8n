@@ -1,7 +1,8 @@
 # Publishes to npm when a version tag is pushed.
 #
 # n8n requires community nodes to be published from CI with a provenance
-# signature. What must be true before the first release is in CONTRIBUTING.md.
+# signature. What must be true before the first release is in MAINTAINING.md,
+# which lives on the dev branch.
 
 name: Publish
 

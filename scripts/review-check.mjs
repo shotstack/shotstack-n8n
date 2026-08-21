@@ -245,7 +245,7 @@ const DOCS_ALLOWED = new Set([
 // The maintenance guide is internal and lives on dev only. It names the kill
 // line and the gaps in our own cover, which do not belong beside a public
 // package. Nothing links to it, so its absence on main breaks no reference.
-const DEV_ONLY = '.github/CONTRIBUTING.md';
+const DEV_ONLY = 'MAINTAINING.md';
 const branch = (() => {
 	try {
 		return sh('git rev-parse --abbrev-ref HEAD');
