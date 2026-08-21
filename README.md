@@ -164,6 +164,11 @@ Most posting nodes accept a URL and do not need this.
 
 ### Reference → Get Reference
 
+**Put this step once, after the trigger.** Its output is the same for every
+item, and it is tens of thousands of characters. n8n stores that in the
+execution once per item, so inside a loop over 500 rows the run approaches
+n8n's default 16 MB payload ceiling on the Core setting alone.
+
 Hands a language model everything it needs to write a working edit. **Call this
 before asking an AI to build a video.**
 
