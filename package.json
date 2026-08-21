@@ -30,14 +30,14 @@
     "provenance": true
   },
   "scripts": {
-    "build": "n8n-node build",
+    "build": "node scripts/build-user-agent.mjs && n8n-node build",
     "build:watch": "tsc --watch",
     "dev": "n8n-node dev",
     "lint": "n8n-node lint",
     "lint:fix": "n8n-node lint --fix",
     "release": "n8n-node release",
     "prepublishOnly": "n8n-node prerelease",
-    "test": "npm run build && node test/package-loads.mjs && node test/credential-host-scope.mjs && node test/recipe-rules.mjs && node test/docs-match-ui.mjs",
+    "test": "npm run build && node test/package-loads.mjs && node test/credential-host-scope.mjs && node test/recipe-rules.mjs && node test/docs-match-ui.mjs && node test/environment-mapping.mjs && node test/wait-and-backoff.mjs && node test/submit-guards.mjs",
     "vendor:skill": "node scripts/vendor-skill.mjs"
   },
   "files": [

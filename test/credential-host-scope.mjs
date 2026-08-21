@@ -10,7 +10,9 @@ import { readdir, readFile } from 'node:fs/promises';
 import { ShotstackApi } from '../dist/credentials/ShotstackApi.credentials.js';
 
 const credential = new ShotstackApi();
-const credentials = { apiKey: 'SECRET-KEY-VALUE', environment: 'stage' };
+// authenticate() reads the host, never this. test/environment-mapping.mjs
+// covers what the environment value does.
+const credentials = { apiKey: 'SECRET-KEY-VALUE', environment: 'sandbox' };
 
 const cases = [
 	['Edit API', { baseURL: 'https://api.shotstack.io/edit/stage', url: '/render' }, true],

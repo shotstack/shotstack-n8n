@@ -2,6 +2,7 @@ import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from '
 import { renderDescription } from './resources/render';
 import { assetDescription } from './resources/asset';
 import { USER_AGENT } from './userAgent';
+import { EDIT_BASE_URL } from './environment';
 import { referenceDescription } from './resources/reference';
 import { getTemplates } from './listSearch/getTemplates';
 
@@ -32,7 +33,7 @@ export class Shotstack implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: '=https://api.shotstack.io/edit/{{$credentials.environment}}',
+			baseURL: EDIT_BASE_URL,
 			headers: {
 				Accept: 'application/json',
 				'Content-Type': 'application/json',

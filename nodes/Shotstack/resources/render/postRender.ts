@@ -59,6 +59,21 @@ const buildRenderBody: PreSendAction = async function (
 		});
 	}
 
+	// An n8n expression left in a fixed-mode field arrives here as literal text.
+	// Shotstack accepts the edit, fails on the asset download, and reports a bad
+	// URL, so the user looks at Shotstack rather than at their own expression.
+	// This was 1,381 failed renders from n8n in 90 days.
+	//
+	// Match `{{ $` only. A bare `{{ HEADLINE }}` is a Shotstack merge
+	// placeholder and is valid here.
+	const unresolved = JSON.stringify(edit).match(/\{\{\s*\\?\$[^}]*\}\}/);
+	if (unresolved) {
+		throw new NodeOperationError(this.getNode(), 'The edit still contains an n8n expression', {
+			description: `Shotstack would receive ${unresolved[0]} as literal text and fail to fetch it. The Edit field is in fixed mode, so n8n did not evaluate it. Build the edit in an earlier step and reference it once, or switch the field to expression mode. A Shotstack merge placeholder such as {{ HEADLINE }} is fine and does not trigger this.`,
+			itemIndex: this.getItemIndex(),
+		});
+	}
+
 	const callback = String(this.getNodeParameter('callback', '') ?? '').trim();
 	requestOptions.body = callback ? { ...edit, callback } : edit;
 	return requestOptions;

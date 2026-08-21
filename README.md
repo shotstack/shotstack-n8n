@@ -24,8 +24,9 @@ You need a Shotstack API key from
 Sandbox and Production have separate keys.
 
 The credential's **Environment** switch defaults to Sandbox, so you can build
-before you spend anything. The node sends your key to `api.shotstack.io` and to
-no other host.
+before you spend anything. It stores which environment you picked, not an API
+version, so the node keeps working when Shotstack changes one. The node sends
+your key to `api.shotstack.io` and to no other host.
 
 **One credential holds one key and one environment.** Because the two
 environments have different keys, create a second credential when you are ready
@@ -40,10 +41,12 @@ first needs anything typed into it.
 
 1. **Render → Render Asset.** Paste an edit into the **Edit** field. The
    placeholder shown in the field is a working one to start from.
-2. **Render → Get Render Status.** Turn on **Wait for the Render To Finish**.
-   Render ID already defaults to the id from step 1.
-3. **Asset → Get Asset by Render ID.** Returns the permanent CDN URL. This step
-   waits for Shotstack to publish the file, so do not add a Wait node.
+2. **Asset → Get Asset by Render ID.** Returns the permanent CDN URL. Render ID
+   already defaults to the id from step 1. This step waits for the render and
+   for Shotstack to publish the file, up to two minutes, so do not add a Wait
+   node. Most renders finish well inside that.
+3. **Render → Get Render Status**, only for a render longer than two minutes.
+   Turn on **Wait for the Render To Finish** and put this before step 2.
 4. **Asset → Download File** — only if the next node needs the bytes rather
    than a URL. Most do not.
 
@@ -211,12 +214,18 @@ Shotstack (Render Asset) → Shotstack (Get Render Status, waiting) → Shotstac
 No Wait node, no Switch, no loop. A failed render stops the step and reports the
 reason Shotstack gave, rather than looping.
 
-It holds the n8n execution open while it waits, so use **Give Up After** to bound
-it. Two things to plan for. Your n8n can stop an execution before that time —
-check [`EXECUTIONS_TIMEOUT`](https://docs.n8n.io/hosting/configuration/environment-variables/executions/)
-on a self-hosted instance. And the wait runs once per input item, at the same
-time, so 50 render IDs means 50 poll loops at once. Batch them, or use a
-callback.
+It holds the n8n execution open while it waits. **Give Up After** bounds that,
+and it allows up to 10 minutes. Nine in ten renders finish inside a minute.
+
+Two things to plan for. Your n8n can stop an execution before Give Up After
+runs out: check
+[`EXECUTIONS_TIMEOUT`](https://docs.n8n.io/hosting/configuration/environment-variables/executions/)
+on a self-hosted instance, and note that n8n's own `EXECUTIONS_TIMEOUT_MAX`
+defaults to one hour. And every input item waits, so a batch of render IDs can
+use up that hour inside a single execution. Batch them, or use a callback.
+
+Giving up does not stop the render. Shotstack finishes it and bills it either
+way, so a long render belongs on a callback rather than a longer wait.
 
 ### Callback (best for long or bulk renders)
 

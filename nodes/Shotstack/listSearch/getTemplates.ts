@@ -5,6 +5,7 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { USER_AGENT } from '../userAgent';
+import { apiPathFor } from '../environment';
 
 type TemplateSummary = {
 	id: string;
@@ -22,11 +23,10 @@ export async function getTemplates(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('shotstackApi');
-	const environment = (credentials?.environment as string) ?? 'stage';
 
 	const response = (await this.helpers.httpRequestWithAuthentication.call(this, 'shotstackApi', {
 		method: 'GET',
-		url: `https://api.shotstack.io/edit/${environment}/templates`,
+		url: `https://api.shotstack.io/edit/${apiPathFor(credentials?.environment)}/templates`,
 		json: true,
 		timeout: 30000,
 		headers: { 'User-Agent': USER_AGENT },

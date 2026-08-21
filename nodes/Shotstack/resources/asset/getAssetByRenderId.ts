@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { isRenderId } from '../renderId';
 import { USER_AGENT } from '../../userAgent';
+import { apiPathFor, SERVE_BASE_URL } from '../../environment';
+import { isRateLimited, pollGapMs, RATE_LIMIT_HELP } from '../../polling';
 
 const showOnly = {
 	resource: ['asset'],
@@ -17,6 +19,7 @@ const showOnly = {
 };
 
 const POLL_GAP_MS = 3000;
+const MAX_GAP_MS = 12000;
 const MAX_WAIT_MS = 120000;
 // After this many empty answers, ask the Edit API whether waiting can ever
 // work. A missing or failed render never becomes a hosted file.
@@ -52,7 +55,11 @@ const keepMainFile: PostReceiveAction = async function (
 	return main.length > 0 ? main : items;
 };
 
-const environmentFrom = (baseURL: string) => (baseURL.includes('/serve/v1') ? 'v1' : 'stage');
+/** Reads the environment the credential holds, never the URL it produced. */
+async function apiPath(this: IExecutePaginationFunctions): Promise<string> {
+	const credentials = await this.getCredentials('shotstackApi');
+	return apiPathFor(credentials?.environment);
+}
 
 /** Asks the Edit API why there is no hosted file, so the node can name a cause. */
 async function readRenderStatus(
@@ -149,7 +156,7 @@ const waitForHostedAsset = async function (
 ): Promise<INodeExecutionData[]> {
 	const baseURL = String(requestData.options.baseURL ?? '');
 	const url = `${baseURL}${String(requestData.options.url ?? '')}`;
-	const environment = environmentFrom(baseURL);
+	const environment = await apiPath.call(this);
 	const renderId = String(this.getNodeParameter('renderId', '') ?? '').trim();
 
 	// The wait loop below builds its own requests, so check the ID here too.
@@ -168,9 +175,10 @@ const waitForHostedAsset = async function (
 	// request takes, so 40 polls behind a 30-second timeout could hold the
 	// execution for twenty minutes and still report two minutes.
 	const deadline = Date.now() + MAX_WAIT_MS;
+	let throttled = false;
 
 	for (let attempt = 0; Date.now() < deadline; attempt++) {
-		let response: { statusCode: number; body: IDataObject } | undefined;
+		let response: { statusCode: number; body: IDataObject; headers: IDataObject } | undefined;
 		try {
 			response = (await this.helpers.httpRequestWithAuthentication.call(this, 'shotstackApi', {
 				method: 'GET',
@@ -180,10 +188,14 @@ const waitForHostedAsset = async function (
 				ignoreHttpStatusErrors: true,
 				timeout: 30000,
 				headers: { 'User-Agent': USER_AGENT },
-			})) as { statusCode: number; body: IDataObject };
+			})) as { statusCode: number; body: IDataObject; headers: IDataObject };
 		} catch {
 			// A dropped connection is not an answer. Keep waiting.
 		}
+
+		// Without this a 429 reads as "not published yet" and the loop polls
+		// again, adding load to the account Shotstack is already throttling.
+		if (isRateLimited(response)) throttled = true;
 
 		if (response?.statusCode === 401 || response?.statusCode === 403) {
 			throw new NodeOperationError(this.getNode(), 'Shotstack refused the API key', {
@@ -263,8 +275,16 @@ const waitForHostedAsset = async function (
 			}
 		}
 
-		if (Date.now() + POLL_GAP_MS >= deadline) break;
-		await sleep(POLL_GAP_MS);
+		const gap = pollGapMs(attempt, POLL_GAP_MS, MAX_GAP_MS, response);
+		if (Date.now() + gap >= deadline) break;
+		await sleep(gap);
+	}
+
+	if (throttled) {
+		throw new NodeOperationError(this.getNode(), 'Shotstack did not publish the file in time', {
+			description: RATE_LIMIT_HELP,
+			itemIndex: this.getItemIndex(),
+		});
 	}
 
 	const check = await readRenderStatus.call(this, environment, renderId);
@@ -286,7 +306,7 @@ export const getAssetByRenderIdDescription: INodeProperties[] = [
 		routing: {
 			request: {
 				// The Serve API, not the Edit API, so override the node baseURL.
-				baseURL: '=https://api.shotstack.io/serve/{{$credentials.environment}}',
+				baseURL: SERVE_BASE_URL,
 				url: '=/assets/render/{{$value}}',
 			},
 			send: {

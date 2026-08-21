@@ -7,6 +7,7 @@ import type {
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
+import { EDIT_BASE_URL } from '../nodes/Shotstack/environment';
 
 export class ShotstackApi implements ICredentialType {
 	name = 'shotstackApi';
@@ -28,16 +29,16 @@ export class ShotstackApi implements ICredentialType {
 			options: [
 				{
 					name: 'Sandbox',
-					value: 'stage',
+					value: 'sandbox',
 					description: 'Free renders with a watermark. Use this environment while you build',
 				},
 				{
 					name: 'Production',
-					value: 'v1',
+					value: 'production',
 					description: 'Consumes credits, no watermark',
 				},
 			],
-			default: 'stage',
+			default: 'sandbox',
 			description: 'Sandbox and Production use separate API keys. Enter the key that matches this environment',
 		},
 		{
@@ -78,7 +79,7 @@ export class ShotstackApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://api.shotstack.io/edit/{{$credentials?.environment}}',
+			baseURL: EDIT_BASE_URL,
 			url: '/templates',
 			method: 'GET',
 		},
