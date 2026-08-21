@@ -60,6 +60,29 @@ seven days, chase it in Discord `#community-nodes`.
 Read [Releasing](#releasing) once before your first release. It has three
 guards and one trap.
 
+### The checks a script cannot do
+
+`review-check.mjs` covers everything mechanical. These need a person, and none
+of them has an automated equivalent. Work through them in a real n8n before you
+tag.
+
+1. **Run one render end to end.** Render Asset, then Get Asset by Render ID.
+   This is the only test of the whole path.
+2. **Press Test on the credential**, on Sandbox and on Production. The
+   credential is the one part no static check can reach.
+3. **Confirm a Production credential really reaches Production.** The render
+   should have no watermark and should consume a credit.
+4. **Open the template picker.** It should list the account's templates.
+5. **Read one error out loud.** Break something on purpose, and check the
+   message makes sense to a person who did not write the node.
+6. **Reread the README for promises.** A timing, a screenshot or a claim about
+   what Shotstack will do is a promise. A description is not.
+7. **Hand this guide to someone else.** If they cannot finish Job 1 without
+   asking the owner, the guide is wrong, not them.
+8. **Ask whether anyone has reviewed what Get Reference tells a customer's AI.**
+   That text decides what videos their agents build, and the Director service
+   says something different from the server. Nobody has read both.
+
 ## Rules
 
 Break one of these and something fails quietly.

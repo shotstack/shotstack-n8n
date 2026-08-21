@@ -241,15 +241,36 @@ const DOCS_ALLOWED = new Set([
 	'README.md', // the npm and n8n listing page
 	'CHANGELOG.md', // what changed between published versions
 	'LICENSE.md', // package.json declares MIT, and npm expects the file
-	'.github/CONTRIBUTING.md', // how to maintain it, including cover when the owner is away
 ]);
+// The maintenance guide is internal and lives on dev only. It names the kill
+// line and the gaps in our own cover, which do not belong beside a public
+// package. Nothing links to it, so its absence on main breaks no reference.
+const DEV_ONLY = '.github/CONTRIBUTING.md';
+const branch = (() => {
+	try {
+		return sh('git rev-parse --abbrev-ref HEAD');
+	} catch {
+		return '';
+	}
+})();
+
 check('Docs', 'no markdown file beyond the essential set', () => {
 	const found = sh('git ls-files "*.md"').split('\n').filter(Boolean);
+	const allowed = new Set(DOCS_ALLOWED);
+	if (branch !== 'main') allowed.add(DEV_ONLY);
 	const wrong = [
-		...found.filter((f) => !DOCS_ALLOWED.has(f)).map((f) => `extra ${f}`),
-		...[...DOCS_ALLOWED].filter((f) => !found.includes(f)).map((f) => `missing ${f}`),
+		...found.filter((f) => !allowed.has(f)).map((f) => `extra ${f}`),
+		...[...allowed].filter((f) => !found.includes(f)).map((f) => `missing ${f}`),
 	];
 	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(', ') : found.join(', ') };
+});
+
+check('Docs', 'the maintenance guide never reaches main', () => {
+	const tracked = sh('git ls-files').split('\n').includes(DEV_ONLY);
+	const onMain = sh(`git ls-tree --name-only -r main -- ${DEV_ONLY}`) !== '';
+	if (onMain) return { ok: false, actual: `${DEV_ONLY} is committed on main. Remove it there.` };
+	if (branch === 'main' && tracked) return { ok: false, actual: `${DEV_ONLY} is in this main checkout` };
+	return { ok: true, actual: branch === 'main' ? 'absent, correct for main' : 'on this branch, absent from main' };
 });
 // A doc that names a file, an anchor or a command is making a claim. Check the
 // claim. This is the whole class of error a reader spots at a glance, which is

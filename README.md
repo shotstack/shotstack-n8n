@@ -326,10 +326,12 @@ Tested against n8n 2.35. Requires Node.js 20.19 or later; n8n 2.x itself asks fo
 
 ## Contributing
 
-Setup, how to run the node in a real n8n, the rules, and the release process are
-all in [CONTRIBUTING](.github/CONTRIBUTING.md). Do not open a public issue for a
-problem that could expose an API key or someone's rendered files. Use private
-vulnerability reporting on the repository Security tab.
+Found a bug? Open an issue and include the render ID. It lets Shotstack look up
+the exact job instead of guessing from a description.
+
+Do not open a public issue for a problem that could expose an API key or
+someone's rendered files. Use private vulnerability reporting on the repository
+Security tab.
 
 ## Licence
 
