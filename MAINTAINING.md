@@ -95,6 +95,38 @@ tag.
    That text decides what videos their agents build, and the Director service
    says something different from the server. Nobody has read both.
 
+## The files that need a second reader
+
+n8n writes names into every saved workflow, and a credential is a row the user
+owns that no release can reach. These files hold those names. A rename in one
+of them does not fail: it silently empties a field in workflows that already
+work.
+
+Everything not on this list is free to change. Display names, descriptions,
+docs, scripts, tests and the internal layout included.
+
+| File | What is frozen in it |
+| --- | --- |
+| `package.json` | the package name, and the `n8n` block naming the built entry points |
+| `credentials/ShotstackApi.credentials.ts` | the credential name `shotstackApi`, the fields `environment` and `apiKey`, and the values `sandbox` and `production` |
+| `nodes/Shotstack/Shotstack.node.ts` | the node type name `shotstack`, and the resource values `render`, `asset`, `reference` |
+| `nodes/Shotstack/resources/render/index.ts` | the operation values `postRender`, `postTemplateRender`, `getRender` |
+| `nodes/Shotstack/resources/asset/index.ts` | the operation values `getAssetByRenderId`, `download` |
+| `nodes/Shotstack/resources/reference/index.ts` | the operation value `getReference`, and the output keys a workflow reads |
+| `nodes/Shotstack/resources/render/postRender.ts` | the fields `edit`, `callback` |
+| `nodes/Shotstack/resources/render/postTemplateRender.ts` | the fields `templateId`, `mergeSource`, `mergeJson`, `merge`, `find`, `replace` |
+| `nodes/Shotstack/resources/render/getRender.ts` | the fields `renderId`, `waitForCompletion`, `giveUpAfter`, `includeData`, `simple`, and the nine keys Simplify emits |
+| `nodes/Shotstack/resources/asset/getAssetByRenderId.ts` | the fields `renderId`, `mainFileOnly`, `simple`, and the five keys Simplify emits |
+| `nodes/Shotstack/resources/asset/download.ts` | the fields `fileUrl`, `fileName` |
+
+One more, and it is the filename rather than the contents:
+`.github/workflows/publish.yml`. npm's trusted publisher entry names that file,
+so renaming it stops publishing and reports nothing.
+
+Two things that are frozen and are not files at all. The repository must keep
+its name, because the same entry names it. The repository must stay public,
+because npm refuses provenance for a private one.
+
 ## Rules
 
 Break one of these and something fails quietly.

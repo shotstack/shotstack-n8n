@@ -300,6 +300,31 @@ const branch = (() => {
 	}
 })();
 
+// MAINTAINING.md lists the files that hold a name a saved workflow persists, so
+// a reviewer knows which edits reach users. A list like that is worthless the
+// day it stops matching, and nothing about adding a field would remind anyone.
+check('Docs', 'the frozen-file list matches where the names actually live', () => {
+	if (branch === 'main') return { ok: true, actual: 'the guide is not on main' };
+	// Only this section. The guide names generated files elsewhere, and those
+	// hold no persisted name.
+	const section = (readFileSync(DEV_ONLY, 'utf8').split('\n## ').find((s) => s.startsWith('The files that need a second reader')) ?? '');
+	const holders = sh('git ls-files "nodes/*.ts" "nodes/**/*.ts" "credentials/*.ts"')
+		.split('\n')
+		.filter(Boolean)
+		.filter((f) => {
+			const text = readFileSync(f, 'utf8');
+			// A persisted name or a stored option value, as the node description
+			// declares them. Helpers and generated data hold neither.
+			return /^\t*name: '/m.test(text) || /^\t*value: '/m.test(text);
+		});
+	if (!section) return { ok: false, actual: 'the frozen-file section is gone from the guide' };
+	const missing = holders.filter((f) => !section.includes(f));
+	const stale = [...section.matchAll(/`((?:nodes|credentials)\/[\w./-]+\.ts)`/g)]
+		.map((m) => m[1])
+		.filter((f) => !holders.includes(f));
+	const wrong = [...missing.map((f) => `unlisted ${f}`), ...stale.map((f) => `listed but holds no name: ${f}`)];
+	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(', ') : `${holders.length} files, all listed` };
+});
 check('Docs', 'no markdown file beyond the essential set', () => {
 	const found = sh('git ls-files "*.md"').split('\n').filter(Boolean);
 	const allowed = new Set(DOCS_ALLOWED);
