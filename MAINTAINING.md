@@ -119,6 +119,12 @@ Break one of these and something fails quietly.
   Shotstack still bills any render already submitted, and the workflow cannot
   reach it. Do the work in a `preSend` and throw `NodeOperationError` with
   `itemIndex`.
+- **Never rename `publish.yml`.** The filename is part of npm's trusted
+  publisher entry for this package. Rename it and every tag fails silently: no
+  publish, no error anyone sees. The same applies to the repository name.
+- **Never make the repository private.** npm writes provenance to a public
+  transparency log and refuses to generate it for a private repository, so
+  publishing stops.
 - **Never add an attribution trailer to a commit**, including `Co-Authored-By`.
 - **Check a claim about the API before you write it down.** Use
   `node_modules/@shotstack/schemas/dist/api.bundled.json`, or call the live
@@ -242,22 +248,6 @@ The scan globs `**/*.js`, `**/*.ts` and `**/*.json`. The `.mjs` files under
 eslint resolves 236 rules for a file under `nodes/` and **zero** for a `.mjs`
 file. Nothing checks those files. That is why they may use `console`. If you
 move that code into a `.ts` file, expect `no-console` to fire.
-
-### Before the first release
-
-1. **The repository must be public.** npm writes provenance to a public
-   transparency log. It refuses to generate provenance for a private repository.
-2. **An owner of the `@shotstack` npm organisation adds a trusted publisher.**
-   Go to npmjs.com, then package settings, then Publish access, then Trusted
-   Publishers. Set repository owner `shotstack`, repository name
-   `shotstack-n8n`, workflow `publish.yml`, and leave environment blank.
-
-   npm may refuse a trusted publisher for a name it has never seen. If that
-   happens, publish `0.1.0` once with a granular access token in the `NPM_TOKEN`
-   repository secret. Then add the trusted publisher and delete the secret.
-   `publish.yml` handles both paths.
-3. **Keep the name `publish.yml`.** The filename is part of the trusted
-   publisher entry. Rename the file and every tag fails silently.
 
 ### Removing or deprecating a version
 
