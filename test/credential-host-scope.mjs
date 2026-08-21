@@ -30,6 +30,18 @@ const cases = [
 		{ baseURL: 'https://api.shotstack.io/edit/stage', url: 'https://evil.example.com/x.mp4' },
 		false,
 	],
+	// axios treats a scheme-less // url as absolute too. Reading it as relative
+	// falls back to baseURL, sees Shotstack, and attaches the key to a request
+	// that axios then sends to the other host. Download File blanks baseURL, so
+	// this only bites if that line goes, but the credential must not depend on it.
+	[
+		'protocol relative url beating baseURL',
+		{ baseURL: 'https://api.shotstack.io/edit/stage', url: '//evil.example.com/x.mp4' },
+		false,
+	],
+	['protocol relative url with no baseURL', { baseURL: '', url: '//evil.example.com/x.mp4' }, false],
+	// The same rule must not stop the key reaching a genuine relative call.
+	['a relative path on the Edit API', { baseURL: 'https://api.shotstack.io/edit/stage', url: '/render' }, true],
 ];
 
 let failed = 0;

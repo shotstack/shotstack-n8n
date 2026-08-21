@@ -64,9 +64,16 @@ export class ShotstackApi implements ICredentialType {
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> => {
 		// axios ignores baseURL when url is absolute, so read url first. Download
-		// Video sets baseURL to an empty string, which ?? would keep.
+		// File sets baseURL to an empty string, which ?? would keep.
+		//
+		// Match axios's own rule for "absolute", scheme optional. A protocol
+		// relative url like //evil.example.com/x is absolute to axios but not to
+		// /^https?:\/\//, so that test fell through to baseURL, saw Shotstack and
+		// attached the key to a request axios then sent to evil.example.com.
 		const url = String(requestOptions.url ?? '');
-		const target = /^https?:\/\//i.test(url) ? url : String(requestOptions.baseURL ?? '');
+		const target = /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url)
+			? url
+			: String(requestOptions.baseURL ?? '');
 
 		if (/^https:\/\/api\.shotstack\.io(\/|$)/i.test(target)) {
 			requestOptions.headers = {
