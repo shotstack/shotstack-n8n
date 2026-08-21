@@ -1,15 +1,16 @@
 # Maintaining the Shotstack n8n node
 
-Owner: @Jesus-Shotstack. Ask anything in
-[an issue](https://github.com/shotstack/shotstack-n8n/issues).
-`.github/CODEOWNERS` asks the owner to review every pull request.
+Owner: @Jesus-Shotstack.
 
-If you are covering while the owner is away, you need one of the three jobs
-below. Everything after them is background. Read it later.
+This is the runbook. Three jobs cover almost everything that will ever come up.
+If you are covering while the owner is away, read the one you need and stop
+there.
+
+Internal. This file lives on `dev` and never on `main`.
 
 ## Job 1. Someone filed an issue
 
-Most issues are one of four things. Use the render ID in the report to find the
+Most issues are one of five things. Use the render ID in the report to find the
 job in the Shotstack dashboard. That usually settles it.
 
 | What they report | What it usually means |
@@ -20,12 +21,13 @@ job in the Shotstack dashboard. That usually settles it.
 | "The edit still contains an n8n expression" | Their Edit field is in fixed mode, so n8n never evaluated `{{ $json.something }}` and it would reach Shotstack as text. The node stops it. Tell them to switch the field to expression mode, or build the edit in an earlier step. |
 | The node will not install | Almost always n8n Cloud. Cloud installs verified nodes only. Your own n8n works today. |
 
-If it is a real defect, do this:
+If it is a real defect:
 
 1. Reproduce it with `npm run dev`.
 2. Write a test that fails.
 3. Fix it.
-4. Hold the fix for the next quarterly release, unless customers are blocked.
+4. Hold the fix for the next release, unless customers are blocked. Releases
+   batch, for the reason in Job 3.
 
 ## Job 2. Shotstack changed the Edit schema
 
@@ -37,14 +39,18 @@ the text the node hands an AI, which is built in at build time.
 
 ```bash
 npm install @shotstack/schemas@latest
-node scripts/build-reference.mjs
-npm run vendor:skill          # only if shotstack/shotstack-cli moved
+node scripts/build-reference.mjs          # from @shotstack/schemas
+npm run vendor:skill                      # only if shotstack/shotstack-cli moved
 node scripts/review-check.mjs
 npm test
 ```
 
 Commit the regenerated files under `nodes/Shotstack/reference/`. CI fails if
 they do not match the installed schema package.
+
+`npm run vendor:skill -- --latest` reports whether the pinned skill commit has
+moved. `skill-freshness.yml` runs that weekly. It fails if it can no longer
+fetch the pinned skill, and reports without failing if the pin is only behind.
 
 ## Job 3. It is time to release
 
@@ -56,6 +62,12 @@ npm run release
 
 Then submit the new version in the n8n Creator Portal. If it sits for more than
 seven days, chase it in Discord `#community-nodes`.
+
+**Batch changes into few releases.** Every new version goes back through n8n's
+review queue before n8n Cloud serves it, and ten days is normal. Matching
+Shotstack's release cadence is not possible, and the queue is why. One useful
+consequence: n8n Cloud serves the reviewed version, not the latest on npm, so a
+bad publish does not reach Cloud users on its own.
 
 Read [Releasing](#releasing) once before your first release. It has three
 guards and one trap.
@@ -112,6 +124,8 @@ Break one of these and something fails quietly.
   `node_modules/@shotstack/schemas/dist/api.bundled.json`, or call the live
   sandbox. The spec and the running service disagree sometimes. The service
   wins.
+
+Adding an operation is a product decision. Ask the owner first.
 
 ## Security
 
@@ -172,21 +186,19 @@ npm pack
    request.
 5. Merge `dev` into `main`. Only a tag on `main` publishes.
 
-**This file must never land on `main`.** It is internal. Merging `dev` into
-`main` will try to bring it back, and if you edited it since the last merge git
-reports a modify/delete conflict on it. Either way the fix is the same:
+**This file must never land on `main`.** Merging `dev` into `main` will try to
+bring it back, and if you edited it since the last merge git reports a
+modify/delete conflict on it. Either way the fix is the same:
 
 ```bash
 git checkout main
 git merge dev
-git rm .github/CONTRIBUTING.md     # resolves the conflict, or removes the re-add
+git rm MAINTAINING.md     # resolves the conflict, or removes the re-add
 git commit
 ```
 
 `node scripts/review-check.mjs` fails if the file is on `main`, wherever you run
 it, so a forgotten step shows up rather than shipping.
-
-Adding an operation is a product decision. Ask the owner first.
 
 ## Releasing
 
@@ -264,68 +276,3 @@ npm deprecate @shotstack/n8n-nodes-shotstack@<version> "Use <next version>. <rea
 ```
 
 The package name is permanent either way. Unpublishing does not free it.
-
-## Background: why this needs little work
-
-About **3 hours a month**, in bursts. Most months are zero. One half day per
-quarter does the release. Add 20 to 30 hours across the first quarter after
-launch, when real users find real problems.
-
-| Work | How often | Hours |
-| --- | --- | --- |
-| Quarterly release, and resubmit to n8n | 4 a year | 4 to 6 each |
-| Issue triage | ongoing | 1 to 2 a month, and it grows with installs |
-| Platform work, such as a new Node.js floor or an n8n major version | about once a year | 4 to 8 a year |
-
-For comparison, ElevenLabs runs an official n8n node with a funded team. They
-spend 14 commits and 2 releases a year on it.
-
-**Most Shotstack API releases do not reach the node.** The node posts the edit
-the user wrote. A new asset type, property or model works the day Shotstack
-ships it. Only Job 2 above needs a release.
-
-**n8n releases rarely reach it either.** `n8nNodesApiVersion` is 1 and has never
-been 2. The `n8n-workflow` peer dependency is `*`, so its version 2.0 cost node
-authors nothing. n8n's `BREAKING-CHANGES.md` covers the whole project history,
-and the phrase "community node" appears in it zero times. Verified nodes may not
-have runtime dependencies, so there is no CVE upkeep, and this package has none.
-
-The tail risk is n8n adding a rule later. It has done that once: from 1 May 2026
-every community node must publish from CI with provenance. This repository
-already does. Budget one surprise like that every year or two.
-
-**The node has to lag, by design.** Every new version goes back through n8n's
-review queue before n8n Cloud serves it. Ten days is normal. So batch changes
-quarterly. Matching Shotstack's release cadence is not possible, and the queue
-is why. One useful consequence: n8n Cloud serves the reviewed version, not the
-latest on npm. A bad publish does not reach Cloud users on its own.
-
-## Still to settle
-
-1. **Name a backup.** Three hours a month owned by one person with no cover is
-   three hours a month that stops when that person is away.
-2. **Use a role account for the n8n Creator Portal.** Verification ties the npm
-   maintainer to the GitHub repository owner. If the person who submitted it
-   leaves, the verification is stranded and nobody can move it. Fix this before
-   submitting, not after.
-3. **Turn on private vulnerability reporting.** Repository settings, then
-   Security, then Private vulnerability reporting. Without it, a security
-   finding arrives as a public issue.
-4. **Configure npm trusted publishing** against this repository and
-   `publish.yml`. Then no token exists to rotate or lose.
-5. **Add one line to the API team's definition of done:** does this change the
-   Edit schema? If yes, tag this repository for the next quarterly release.
-6. **Agree a kill line.** If installs stay under an agreed number after twelve
-   months, deprecate the node on purpose, with a final release and a note in the
-   README. n8n never forces this. Stale nodes sit on npm for years.
-
-## Regenerating the embedded reference
-
-```bash
-node scripts/build-reference.mjs          # from @shotstack/schemas
-npm run vendor:skill                      # from shotstack/shotstack-cli, at a pinned commit
-npm run vendor:skill -- --latest          # report whether the pin has moved
-```
-
-`skill-freshness.yml` runs weekly. It fails if it can no longer fetch the pinned
-skill. It reports without failing if the pin is only behind.
