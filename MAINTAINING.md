@@ -94,6 +94,13 @@ tag.
 8. **Ask whether anyone has reviewed what Get Reference tells a customer's AI.**
    That text decides what videos their agents build, and the Director service
    says something different from the server. Nobody has read both.
+9. **Try streaming a download.** Download File uses `encoding: 'arraybuffer'`,
+   so the whole file is in memory before any of our code runs. The size limit
+   in `download.ts` therefore prevents the second copy, not the first. n8n
+   supports `encoding: 'stream'` and `prepareBinaryData` accepts a `Readable`,
+   which would fix it properly, but it changes how the response is handled and
+   no test here can prove it. Try it against a real download while you have one
+   running. If it works, the limit can go up or away.
 
 ## The files that need a second reader
 
