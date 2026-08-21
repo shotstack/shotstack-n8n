@@ -221,9 +221,7 @@ const waitForHostedAsset = async function (
 			const assets = (response.body?.data ?? []) as IDataObject[];
 			const files = assets.map((asset) => {
 				const attributes = (asset.attributes ?? {}) as IDataObject;
-				// || not ??. Both fields are optional and absent while an asset is
-				// importing, and an empty name matches no suffix, so ?? would file a
-				// nameless asset as the rendered file.
+				// || not ??, for the reason given on keepMainFile above.
 				const name = String(attributes.filename || attributes.url || '').split('?')[0];
 				return { name, named: name !== '', status: attributes.status };
 			});

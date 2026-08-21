@@ -89,7 +89,10 @@ check('n8n requirements', 'licence', () => ({ ok: pkg.license === 'MIT', actual:
 
 // Is the history clean
 check('History', 'no Co-Authored-By trailers', () => {
-	const n = (sh('git log --format=%B').match(/Co-Authored-By/g) || []).length;
+	// A trailer, so anchor it: a line of its own ending in a colon. Naming the
+	// rule in a commit body is not breaking it. Case-insensitive, because
+	// GitHub's own merge UI writes "Co-authored-by".
+	const n = (sh('git log --format=%B').match(/^[ \t]*co-authored-by:/gim) || []).length;
 	return { ok: n === 0, actual: String(n) };
 });
 check('History', 'working tree clean', () => {
@@ -150,9 +153,9 @@ check('Follows the spec', 'display names match the spec summary', () => {
 	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : 'all match' };
 });
 check('Follows the spec', 'every operation calls the method and path the spec gives it', () => {
-	// The checks above compare names. Names being right proved nothing about the
+	// The checks above compare names. Names being right proves nothing about the
 	// request: changing url to '/rendr' left every other check green, so a node
-	// that called the wrong endpoint would have shipped 33/33.
+	// that called the wrong endpoint would have shipped clean.
 	if (!existsSync(OAS)) return { ok: false, actual: 'run npm ci first' };
 	const oas = JSON.parse(readFileSync(OAS, 'utf8'));
 
@@ -292,13 +295,24 @@ const DOCS_ALLOWED = new Set([
 // line and the gaps in our own cover, which do not belong beside a public
 // package. Nothing links to it, so its absence on main breaks no reference.
 const DEV_ONLY = 'MAINTAINING.md';
-const branch = (() => {
-	try {
-		return sh('git rev-parse --abbrev-ref HEAD');
-	} catch {
-		return '';
-	}
-})();
+// On a pull request GitHub checks out a detached merge commit, so asking git
+// for the branch answers "HEAD" and a release PR reads as a dev branch. Take
+// the branch from the event, and fall back to git for a local run.
+const branch =
+	process.env.GITHUB_BASE_REF ||
+	process.env.GITHUB_REF_NAME ||
+	(() => {
+		try {
+			return sh('git rev-parse --abbrev-ref HEAD');
+		} catch {
+			return '';
+		}
+	})();
+// A checkout writes remote-tracking refs, so main is origin/main in CI and a
+// bare main only in a local clone. Neither present means main was not fetched.
+const MAIN_REF = ['refs/heads/main', 'refs/remotes/origin/main'].find(
+	(ref) => quiet(`git rev-parse --verify --quiet ${ref}`) === 0,
+);
 
 // MAINTAINING.md lists the files that hold a name a saved workflow persists, so
 // a reviewer knows which edits reach users. A list like that is worthless the
@@ -338,7 +352,10 @@ check('Docs', 'no markdown file beyond the essential set', () => {
 
 check('Docs', 'the maintenance guide never reaches main', () => {
 	const tracked = sh('git ls-files').split('\n').includes(DEV_ONLY);
-	const onMain = sh(`git ls-tree --name-only -r main -- ${DEV_ONLY}`) !== '';
+	// Say so rather than pass. This check cannot tell "the guide is off main"
+	// from "main was never fetched", and the second must not read as the first.
+	if (!MAIN_REF) return { ok: false, actual: 'main is not in this clone, so this proves nothing' };
+	const onMain = sh(`git ls-tree --name-only -r ${MAIN_REF} -- ${DEV_ONLY}`) !== '';
 	if (onMain) return { ok: false, actual: `${DEV_ONLY} is committed on main. Remove it there.` };
 	if (branch === 'main' && tracked) return { ok: false, actual: `${DEV_ONLY} is in this main checkout` };
 	return { ok: true, actual: branch === 'main' ? 'absent, correct for main' : 'on this branch, absent from main' };
