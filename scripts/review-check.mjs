@@ -89,7 +89,10 @@ check('n8n requirements', 'licence', () => ({ ok: pkg.license === 'MIT', actual:
 
 // Is the history clean
 check('History', 'no Co-Authored-By trailers', () => {
-	const n = (sh('git log --format=%B').match(/Co-Authored-By/g) || []).length;
+	// A trailer, so anchor it: a line of its own ending in a colon. Naming the
+	// rule in a commit body is not breaking it. Case-insensitive, because
+	// GitHub's own merge UI writes "Co-authored-by".
+	const n = (sh('git log --format=%B').match(/^[ \t]*co-authored-by:/gim) || []).length;
 	return { ok: n === 0, actual: String(n) };
 });
 check('History', 'working tree clean', () => {
@@ -150,9 +153,9 @@ check('Follows the spec', 'display names match the spec summary', () => {
 	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : 'all match' };
 });
 check('Follows the spec', 'every operation calls the method and path the spec gives it', () => {
-	// The checks above compare names. Names being right proved nothing about the
+	// The checks above compare names. Names being right proves nothing about the
 	// request: changing url to '/rendr' left every other check green, so a node
-	// that called the wrong endpoint would have shipped 33/33.
+	// that called the wrong endpoint would have shipped clean.
 	if (!existsSync(OAS)) return { ok: false, actual: 'run npm ci first' };
 	const oas = JSON.parse(readFileSync(OAS, 'utf8'));
 
@@ -292,38 +295,239 @@ const DOCS_ALLOWED = new Set([
 // line and the gaps in our own cover, which do not belong beside a public
 // package. Nothing links to it, so its absence on main breaks no reference.
 const DEV_ONLY = 'MAINTAINING.md';
-const branch = (() => {
-	try {
-		return sh('git rev-parse --abbrev-ref HEAD');
-	} catch {
-		return '';
-	}
-})();
+// On a pull request GitHub checks out a detached merge commit, so asking git
+// for the branch answers "HEAD" and a release PR reads as a dev branch. Take
+// the branch from the event, and fall back to git for a local run.
+const branch =
+	process.env.GITHUB_BASE_REF ||
+	process.env.GITHUB_REF_NAME ||
+	(() => {
+		try {
+			return sh('git rev-parse --abbrev-ref HEAD');
+		} catch {
+			return '';
+		}
+	})();
+// A checkout writes remote-tracking refs, so main is origin/main in CI and a
+// bare main only in a local clone. Neither present means main was not fetched.
+const MAIN_REF = ['refs/heads/main', 'refs/remotes/origin/main'].find(
+	(ref) => quiet(`git rev-parse --verify --quiet ${ref}`) === 0,
+);
 
-// MAINTAINING.md lists the files that hold a name a saved workflow persists, so
-// a reviewer knows which edits reach users. A list like that is worthless the
-// day it stops matching, and nothing about adding a field would remind anyone.
-check('Docs', 'the frozen-file list matches where the names actually live', () => {
+const REFERENCE_FILE = 'nodes/Shotstack/resources/reference/index.ts';
+const REFERENCE_KEYS = [
+	'reference',
+	'rulesSource',
+	'referenceChars',
+	'templates',
+	'templateCount',
+	'credentialError',
+	'documentation',
+	'documentationChars',
+	'documentationError',
+];
+
+// Frozen names no walk of the built node reaches. Each names the file whose
+// row must carry it, and how to prove the file still writes it. The proof is
+// structural on purpose: a bare word test passes on a comment, so a key could
+// be deleted while the word survives in prose.
+const UNWALKABLE = [
+	{ file: 'package.json', names: () => [pkg.name, ...pkg.n8n.nodes, ...pkg.n8n.credentials] },
+	{
+		// n8n matches the codex to the node on this exact string, which joins
+		// the package name to the node type. A third place either can break.
+		file: 'nodes/Shotstack/Shotstack.node.json',
+		names: () => [JSON.parse(readFileSync('nodes/Shotstack/Shotstack.node.json', 'utf8')).node],
+	},
+	{
+		file: REFERENCE_FILE,
+		names: () => REFERENCE_KEYS,
+		proof: (text, key) => new RegExp(`\\bjson\\.${key}\\s*=|^\\t\\t${key}:`, 'm').test(text),
+	},
+	{
+		// Reaches the user as $json.rulesSource.<key>.
+		file: 'nodes/Shotstack/reference/skill.ts',
+		names: () => ['repo', 'ref', 'license', 'url'],
+		proof: (text, key) => new RegExp(`^\\s*"${key}":`, 'm').test(text),
+	},
+	{
+		file: 'nodes/Shotstack/resources/asset/download.ts',
+		names: () => ['data'],
+		proof: (text, key) => new RegExp(`binary:\\s*\\{\\s*${key}\\b`).test(text),
+	},
+];
+
+/**
+ * Every name a rename can reach a user through, read from the built node.
+ *
+ * Mostly what n8n stores in a saved workflow. Also the list method key, which
+ * one file exports and another quotes, so a half rename breaks the picker with
+ * no error. Both ends are collected, so renaming one fails this check twice.
+ */
+const frozenNames = () => {
+	const names = new Set();
+	const fromPostReceive = (step) => {
+		if (step.type !== 'setKeyValue') return;
+		for (const key of Object.keys(step.properties ?? {})) names.add(key);
+	};
+	const walk = (list) => {
+		for (const property of list ?? []) {
+			if (property.name) names.add(property.name);
+			// A picker stores its mode name beside the value, and names the method
+			// that fills its list.
+			for (const mode of property.modes ?? []) {
+				names.add(mode.name);
+				if (mode.typeOptions?.searchListMethod) names.add(mode.typeOptions.searchListMethod);
+			}
+			for (const step of property.routing?.output?.postReceive ?? []) fromPostReceive(step);
+			for (const option of property.options ?? []) {
+				if (option.value !== undefined) names.add(String(option.value));
+				// A collection stores its option name as the key holding the rows.
+				if (option.values) {
+					names.add(option.name);
+					walk(option.values);
+				}
+				for (const step of option.routing?.output?.postReceive ?? []) fromPostReceive(step);
+			}
+		}
+	};
+	const shotstack = node();
+	walk(shotstack.description.properties);
+	names.add(shotstack.description.name);
+	for (const method of Object.keys(shotstack.methods?.listSearch ?? {})) names.add(method);
+	// The product token only. Shotstack's render log keeps it, and nothing joins
+	// an old token to a new one. The version after the slash is meant to move.
+	names.add(String(req(resolve(process.cwd(), 'dist/nodes/Shotstack/userAgent.js')).USER_AGENT).split('/')[0]);
+	for (const relative of pkg.n8n.credentials) {
+		const credential = new (Object.values(req(resolve(process.cwd(), relative)))[0])();
+		names.add(credential.name);
+		walk(credential.properties);
+	}
+	return names;
+};
+
+// The README lists what Simplify returns, and a reader wires the next step
+// from that list. It named eight of the nine keys for a year, so the one it
+// missed was invisible unless you ran the node and looked.
+check('Docs', 'the README names the keys Simplify really emits', () => {
+	const properties = node().description.properties;
+	const displayName = new Map();
+	for (const property of properties) {
+		if (property.name !== 'operation') continue;
+		for (const option of property.options ?? []) displayName.set(option.value, option.name);
+	}
+	const readme = readFileSync('README.md', 'utf8');
+	const wrong = [];
+	let checked = 0;
+	for (const property of properties) {
+		if (property.name !== 'simple') continue;
+		const heading = displayName.get(property.displayOptions?.show?.operation?.[0]);
+		const emitted = (property.routing?.output?.postReceive ?? [])
+			.filter((step) => step.type === 'setKeyValue')
+			.flatMap((step) => Object.keys(step.properties ?? {}));
+		const section = readme.split('\n### ').find((s) => s.split('\n')[0].trim().endsWith(heading));
+		const row = section?.split('\n').find((line) => line.startsWith('| **Simplify**'));
+		if (!row) {
+			wrong.push(`no README Simplify row for ${heading}`);
+			continue;
+		}
+		checked += 1;
+		const documented = [...row.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+		const missing = emitted.filter((key) => !documented.includes(key));
+		const extra = documented.filter((key) => !emitted.includes(key));
+		if (missing.length) wrong.push(`${heading}: README omits ${missing.join(', ')}`);
+		if (extra.length) wrong.push(`${heading}: README names ${extra.join(', ')}, which it does not emit`);
+	}
+	// Counted, so a third Simplify field cannot slip through unchecked.
+	const expected = properties.filter((p) => p.name === 'simple').length;
+	if (checked !== expected) wrong.push(`checked ${checked} of ${expected} Simplify fields`);
+	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : `${checked} Simplify rows match the node` };
+});
+
+// Both Render ID fields read the id on the incoming item, so one operation
+// emitting id for something other than the render sends the wrong value to
+// Shotstack. It answers 400, and the node then reports a missing render, which
+// reads as a credential problem. Get Asset by Render ID emits assetId for this
+// reason. Any output holding both names is the same trap again.
+check('Follows the spec', 'no output calls two different things id', () => {
+	const sets = [];
+	const walk = (list) => {
+		for (const property of list ?? []) {
+			const steps = [
+				...(property.routing?.output?.postReceive ?? []),
+				...(property.options ?? []).flatMap((o) => o.routing?.output?.postReceive ?? []),
+			];
+			for (const step of steps) {
+				if (step.type === 'setKeyValue') sets.push(Object.keys(step.properties ?? {}));
+			}
+			for (const option of property.options ?? []) walk(option.values);
+		}
+	};
+	walk(node().description.properties);
+	const wrong = sets
+		.filter((keys) => keys.includes('id') && keys.includes('renderId'))
+		.map((keys) => `one output emits both id and renderId: ${keys.join(', ')}`);
+	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : `${sets.length} outputs, none ambiguous` };
+});
+
+// MAINTAINING.md names every identifier a saved workflow keeps, so a reviewer
+// knows which edits reach users. The section says everything else is free to
+// change, so an omission does not merely fail to help: it gives the wrong
+// answer. Checking the file paths alone let nine names go unlisted.
+check('Docs', 'the guide names every name a saved workflow keeps', () => {
 	if (branch === 'main') return { ok: true, actual: 'the guide is not on main' };
-	// Only this section. The guide names generated files elsewhere, and those
-	// hold no persisted name.
-	const section = (readFileSync(DEV_ONLY, 'utf8').split('\n## ').find((s) => s.startsWith('The files that need a second reader')) ?? '');
-	const holders = sh('git ls-files "nodes/*.ts" "nodes/**/*.ts" "credentials/*.ts"')
-		.split('\n')
-		.filter(Boolean)
-		.filter((f) => {
-			const text = readFileSync(f, 'utf8');
-			// A persisted name or a stored option value, as the node description
-			// declares them. Helpers and generated data hold neither.
-			return /^\t*name: '/m.test(text) || /^\t*value: '/m.test(text);
-		});
-	if (!section) return { ok: false, actual: 'the frozen-file section is gone from the guide' };
-	const missing = holders.filter((f) => !section.includes(f));
-	const stale = [...section.matchAll(/`((?:nodes|credentials)\/[\w./-]+\.ts)`/g)]
-		.map((m) => m[1])
-		.filter((f) => !holders.includes(f));
-	const wrong = [...missing.map((f) => `unlisted ${f}`), ...stale.map((f) => `listed but holds no name: ${f}`)];
-	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(', ') : `${holders.length} files, all listed` };
+	const section =
+		readFileSync(DEV_ONLY, 'utf8')
+			.split('\n## ')
+			.find((s) => s.startsWith('The files that need a second reader')) ?? '';
+	if (!section) return { ok: false, actual: 'the frozen-name section is gone from the guide' };
+
+	const wrong = [];
+	const unreachable = [];
+	for (const entry of UNWALKABLE) {
+		const text = readFileSync(entry.file, 'utf8');
+		for (const name of entry.names()) {
+			unreachable.push(name);
+			if (entry.proof && !entry.proof(text, name)) wrong.push(`${entry.file} no longer writes ${name}`);
+		}
+	}
+
+	// The reference operation is the one that grows output keys, in two shapes:
+	// assigned later, or declared in the literal the object starts as. Scanning
+	// only the first missed the second.
+	const referenceText = readFileSync(REFERENCE_FILE, 'utf8');
+	const literal = referenceText.match(/const json[^=]*=\s*\{([\s\S]*?)\n\t\};/);
+	const written = [
+		...[...referenceText.matchAll(/\bjson\.(\w+)\s*=/g)].map((m) => m[1]),
+		...[...(literal?.[1] ?? '').matchAll(/^\t\t(\w+):/gm)].map((m) => m[1]),
+	];
+	for (const key of written) {
+		if (!REFERENCE_KEYS.includes(key)) wrong.push(`${REFERENCE_FILE} writes ${key}, unlisted here and in the guide`);
+	}
+
+	// One thing this does not prove: that each name sits in the row for the file
+	// it comes from. The section is read as one slab, so a misfiled name passes.
+	// Omission is the dangerous case and that is caught; a misfiled name is
+	// still visible to anyone reading the table.
+	const all = new Set([...frozenNames(), ...unreachable]);
+	const tracked = new Set(sh('git ls-files').split('\n'));
+	const listed = new Set([...section.matchAll(/`([^`]+)`/g)].map((m) => m[1]));
+	for (const name of all) if (!listed.has(name)) wrong.push(`unlisted ${name}`);
+	// No exemption. A backticked token is either a name the code still holds or
+	// a file the repo still tracks. Anything else is stale, and a rule that
+	// waves a shape through is how the last gap stayed open.
+	for (const token of listed) {
+		if (!all.has(token) && !tracked.has(token)) {
+			wrong.push(`listed but neither a live name nor a tracked file: ${token}`);
+		}
+	}
+
+	return {
+		ok: wrong.length === 0,
+		actual: wrong.length
+			? wrong.sort().join(', ')
+			: `${all.size} names, ${unreachable.length} beyond the reach of a walk, all in the guide`,
+	};
 });
 check('Docs', 'no markdown file beyond the essential set', () => {
 	const found = sh('git ls-files "*.md"').split('\n').filter(Boolean);
@@ -338,7 +542,10 @@ check('Docs', 'no markdown file beyond the essential set', () => {
 
 check('Docs', 'the maintenance guide never reaches main', () => {
 	const tracked = sh('git ls-files').split('\n').includes(DEV_ONLY);
-	const onMain = sh(`git ls-tree --name-only -r main -- ${DEV_ONLY}`) !== '';
+	// Say so rather than pass. This check cannot tell "the guide is off main"
+	// from "main was never fetched", and the second must not read as the first.
+	if (!MAIN_REF) return { ok: false, actual: 'main is not in this clone, so this proves nothing' };
+	const onMain = sh(`git ls-tree --name-only -r ${MAIN_REF} -- ${DEV_ONLY}`) !== '';
 	if (onMain) return { ok: false, actual: `${DEV_ONLY} is committed on main. Remove it there.` };
 	if (branch === 'main' && tracked) return { ok: false, actual: `${DEV_ONLY} is in this main checkout` };
 	return { ok: true, actual: branch === 'main' ? 'absent, correct for main' : 'on this branch, absent from main' };

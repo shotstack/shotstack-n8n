@@ -124,7 +124,7 @@ Checks a render and returns its status.
 | **Wait for the Render To Finish** | Off by default. On, the step keeps checking until the render is done — see [Waiting for a render](#waiting-for-a-render). |
 | **Give Up After (Minutes)** | Only shown when waiting. 5 by default, 10 at most. Giving up does not stop the render. |
 | **Include Submitted Edit** | Off by default, so polling responses stay small. |
-| **Simplify** | On by default. Returns `id`, `status`, `url`, `poster`, `thumbnail`, `duration`, `renderTime` and `error`. |
+| **Simplify** | On by default. Returns `id`, `status`, `url`, `poster`, `thumbnail`, `duration`, `renderTime`, `error` and `data`. |
 
 **Branch on `failed` as well as `done`** — see the wait loop below. The
 [API reference](https://shotstack.io/docs/api/) lists every status value.
@@ -138,9 +138,9 @@ Returns the permanent CDN URL for a finished render.
 
 | Field | Notes |
 | --- | --- |
-| **Render ID** | The id returned by either render operation. |
+| **Render ID** | The id returned by either render operation. The default reads it from the previous step. |
 | **Main File Only** | On by default. Off returns [every asset the render produced](https://shotstack.io/docs/guide/serving-assets/serve-api/), one item each. |
-| **Simplify** | On by default. Returns `id`, `renderId`, `url`, `filename` and `status`. |
+| **Simplify** | On by default. Returns `assetId`, `renderId`, `url`, `filename` and `status`. The render is `renderId` here, because `assetId` is the hosted file. |
 
 Use this for any URL you store, email, publish or hand to another system.
 
@@ -177,7 +177,8 @@ before asking an AI to build a video.**
 | **Detail** | `Core` is enough to write a good edit. `Full` adds ten topic guides. `Everything` also fetches Shotstack's full documentation bundle. |
 | **Include Templates** | On by default. Adds this account's templates, so an AI can pick one instead of writing an edit from nothing. |
 
-Returns `reference`, one string with two parts. Shotstack maintains both:
+The main output is `reference`, one string with two parts. Shotstack maintains
+both:
 
 | Part | Source |
 | --- | --- |
@@ -201,6 +202,10 @@ To check an edit before you render it, without an API key:
 
 This node unwraps Shotstack's response envelope, so read `{{$json.id}}`, not
 `{{$json.response.id}}`.
+
+One operation is different. **Get Asset by Render ID** returns a hosted file,
+not a render, so it names the render `renderId` and the file `assetId`. Read
+`{{$json.renderId}}` after that step. Both Render ID fields already do.
 
 ## Waiting for a render
 
@@ -296,9 +301,10 @@ the values. Set **Merge Fields Source** to **JSON** so it can hand over the whol
 list at once.
 
 **The defaults that read the previous step do not apply in tool mode.** Render
-ID and File URL default to `{{ $json.id }}` and `{{ $json.url }}`. On the canvas
-those read the previous node. When an AI Agent calls the node, `$json` is the
-agent's own arguments, so the default finds nothing. Set each field the agent
+ID and File URL default to `{{ $json.renderId || $json.id }}` and
+`{{ $json.url }}`. On the canvas those read the previous node. When an AI Agent
+calls the node, `$json` is the agent's own arguments, so the default finds
+nothing. Set each field the agent
 must supply to `{{ $fromAI('renderId') }}` or similar, so n8n asks the model for
 it by name.
 

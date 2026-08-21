@@ -150,9 +150,10 @@ export const getRenderDescription: INodeProperties[] = [
 		name: 'renderId',
 		type: 'string',
 		required: true,
-		// Both render operations return the id as "id", so this makes the chain
-		// Render -> Get Render Status work with no setup, as Download File does.
-		default: '={{ $json.id }}',
+		// A render step returns the render as "id"; Get Asset by Render ID
+		// returns it as "renderId". Read either, so any chain works with no
+		// setup, as Download File does.
+		default: '={{ $json.renderId || $json.id }}',
 		placeholder: '4a37ef85-b4d1-4b4a-90be-6515290c5091',
 		displayOptions: { show: showOnly },
 		description: 'The ID returned when the render was submitted. The default reads it from the previous step.',

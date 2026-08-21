@@ -7,11 +7,8 @@ on:
       - main
       - dev
 
-# Cancel in-progress runs for the same branch/PR to avoid wasting CI minutes.
+# Cancel in-progress runs for the same branch or pull request.
 concurrency:
-  # The n8n scaffold rendered this as a bare "$" (the same templating bug it has
-  # in publish.yml). Left unfixed, every branch and PR shares one concurrency
-  # group, so any push cancels unrelated in-flight runs.
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
@@ -24,6 +21,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          # The default fetches one commit of one branch. The review checks read
+          # the other branch and walk the log, so both would fail here.
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v5

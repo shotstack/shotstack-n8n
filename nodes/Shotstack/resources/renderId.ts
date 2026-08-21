@@ -18,7 +18,7 @@ export const requireRenderId: PreSendAction = async function (
 	const value = String(this.getNodeParameter('renderId', '') ?? '').trim();
 	if (!isRenderId(value)) {
 		throw new NodeOperationError(this.getNode(), 'That is not a Shotstack render ID', {
-			description: `A render ID looks like 4a37ef85-b4d1-4b4a-90be-6515290c5091. Got "${value}". The render actions return it as "id".`,
+			description: `A render ID looks like 4a37ef85-b4d1-4b4a-90be-6515290c5091. Got "${value}". A render action returns it as "id", and Get Asset by Render ID returns it as "renderId".`,
 			itemIndex: this.getItemIndex(),
 		});
 	}

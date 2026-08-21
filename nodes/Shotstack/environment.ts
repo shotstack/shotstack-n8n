@@ -1,9 +1,8 @@
 /**
  * Turns the credential's Environment into the path segment the API expects.
  *
- * The credential stores `sandbox` or `production`. The URL needs `stage` or
- * `v1`. Keep the API version out of the credential: a credential is a row the
- * user owns, and no release of this node can change one that already exists.
+ * Keep the API version out of the credential. A credential is a row the user
+ * owns, and no release of this node can change one that already exists.
  */
 const API_PATH: Record<string, string> = {
 	sandbox: 'stage',
