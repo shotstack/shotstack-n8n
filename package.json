@@ -1,6 +1,6 @@
 {
   "name": "@shotstack/n8n-nodes-shotstack",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.0",
   "description": "Render video and images from JSON with the Shotstack API",
   "license": "MIT",
   "homepage": "https://shotstack.io",
