@@ -8,7 +8,6 @@
 // days. A bare {{ HEADLINE }} is a Shotstack merge placeholder and must pass.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -76,25 +75,6 @@ await check('an edit with no placeholders at all goes through', async () => {
 await check('an empty edit still reports the empty field, not an expression', async () => {
 	const error = await rejected('');
 	assert.match(error.message, /empty/);
-});
-
-// Download File loads the whole file into memory and prepareBinaryData copies
-// it again, so an oversized file takes the n8n process down rather than the
-// workflow. Measured over 85,907 renders made from n8n: half are 9 MB, 99.84%
-// are under a gigabyte, the largest was 5.6 GB.
-const { tooLargeToLoad, downloadLimit } = require('../dist/nodes/Shotstack/resources/asset/download.js');
-
-await check('the download limit sits above almost every real render', () => {
-	const MB = 1024 * 1024;
-	assert.equal(downloadLimit.bytes, 1024 * MB, 'moving this is fine, but say so');
-	// p50 9 MB, p99 411 MB, and the largest render seen.
-	for (const mb of [9, 411, 1024]) assert.equal(tooLargeToLoad(mb * MB), false, `${mb} MB must pass`);
-	for (const mb of [1025, 5756]) assert.equal(tooLargeToLoad(mb * MB), true, `${mb} MB must be refused`);
-});
-
-await check('the refusal names somewhere to go instead', () => {
-	const source = readFileSync(new URL('../dist/nodes/Shotstack/resources/asset/download.js', import.meta.url), 'utf8');
-	assert.match(source, /destination/i, 'a limit with no alternative is a dead end');
 });
 
 console.log(`\n${passed} passing`);

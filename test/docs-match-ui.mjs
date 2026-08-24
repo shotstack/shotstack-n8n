@@ -2,14 +2,13 @@
 //
 //   npm test
 //
-// Renaming an operation used to leave the README, the CHANGELOG and the text
-// the node hands a customer's AI all pointing at a control that is not there.
+// Renaming an operation used to leave the README and the CHANGELOG pointing at
+// a control that is not there.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildHeader } from '../scripts/vendor-skill.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -94,26 +93,6 @@ check('every operation the node has is documented', () => {
 		.filter((p) => !readme.includes(`${p.resource} → ${p.operation}`))
 		.map((p) => `${p.resource} → ${p.operation}`);
 	assert.deepEqual(missing, [], `in the node but not in README.md: ${missing.join('; ')}`);
-});
-
-check('the text handed to an AI names the operations the node has', () => {
-	// skill.ts is generated. Rebuilding the header needs no network, so compare
-	// it here: a rename without a regenerate fails now, not on a customer's model.
-	const source = read('nodes/Shotstack/reference/skill.ts');
-	// Keep the annotation optional and assert the match. A parser that forbids
-	// the annotation breaks on sight, and a bare [1] throws a TypeError that
-	// sends the reader to a command which cannot fix it. recipe-rules.mjs agrees.
-	const sourceMatch = source.match(/export const SKILL_SOURCE(?:: \w+)? = ([\s\S]*?);\r?\n/);
-	const headerMatch = source.match(/export const SKILL_HEADER(?:: string)? = (".*?");\r?\n/s);
-	assert.ok(sourceMatch, 'cannot read SKILL_SOURCE from skill.ts — has the generator changed?');
-	assert.ok(headerMatch, 'cannot read SKILL_HEADER from skill.ts — has the generator changed?');
-	const ref = JSON.parse(sourceMatch[1]).ref;
-	const shipped = JSON.parse(headerMatch[1]);
-	assert.equal(
-		shipped,
-		buildHeader(ref),
-		'skill.ts is stale. Run: npm run vendor:skill, then commit the result',
-	);
 });
 
 check('no document names a field the node does not have', () => {

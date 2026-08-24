@@ -6,7 +6,7 @@ Render video and images from JSON, inside n8n.
 video and images from a JSON edit and returns a hosted URL. This node puts that in
 your n8n workflows.
 
-[Installation](#installation) · [Credentials](#credentials) · [Your first render](#your-first-render) · [Operations](#operations) · [Waiting for a render](#waiting-for-a-render) · [Working with the file](#working-with-the-file) · [Use with AI agents](#use-with-ai-agents) · [Resources](#resources)
+[Installation](#installation) · [Credentials](#credentials) · [Your first render](#your-first-render) · [Operations](#operations) · [Waiting for a render](#waiting-for-a-render) · [Use with AI agents](#use-with-ai-agents) · [Resources](#resources)
 
 ## Installation
 
@@ -36,7 +36,7 @@ credential catches it before any workflow runs.
 
 ## Your first render
 
-Four Shotstack nodes in a row. Each one reads the previous step, so only the
+Three Shotstack nodes in a row. Each one reads the previous step, so only the
 first needs anything typed into it.
 
 1. **Render → Render Asset.** Paste an edit into the **Edit** field. The
@@ -47,8 +47,10 @@ first needs anything typed into it.
    node. Most renders finish well inside that.
 3. **Render → Get Render Status**, only for a render longer than two minutes.
    Turn on **Wait for the Render To Finish** and put this before step 2.
-4. **Asset → Download File** — only if the next node needs the bytes rather
-   than a URL. Most do not.
+
+Most nodes that post, email or upload take a URL, so step 2 is usually the last
+Shotstack step. If a node needs the bytes, put n8n's own **HTTP Request** node
+after step 2 with the URL from it and the response format set to file.
 
 Keep the credential on Sandbox while you build. Renders are free there, and the
 output carries a watermark.
@@ -69,17 +71,8 @@ and the API reference read the same way.
 | **Render → Render Template** | `POST /templates/render` · `postTemplateRender` |
 | **Render → Get Render Status** | `GET /render/{id}` · `getRender` |
 | **Asset → Get Asset by Render ID** | `GET /assets/render/{id}` · `getAssetByRenderId` (Serve API) |
-| **Asset → Download File** | none — see below |
-| **Reference → Get Reference** | none — see below |
 
-Two operations have no entry in the spec, because they do work that belongs to
-the workflow rather than to the API:
-
-- **Download File** fetches a hosted URL as binary data. No Shotstack endpoint
-  returns bytes, and n8n needs them to attach or upload a file.
-- **Get Reference** returns the schema and writing rules an AI agent needs
-  before it can produce a valid edit. It reads `GET /templates` to list your
-  templates and to confirm the key works.
+Every operation has an entry in the spec. The node adds none of its own.
 
 ### Render → Render Asset
 
@@ -88,7 +81,7 @@ every asset type and the generative assets. Point an AI agent at this operation.
 
 | Field | Notes |
 | --- | --- |
-| **Edit** | The edit: a `timeline` of tracks and clips, plus `output` settings. Paste one from the [docs](https://shotstack.io/docs/guide/) or [Studio](https://shotstack.io/studio/), or have **Get Reference** produce one. |
+| **Edit** | The edit: a `timeline` of tracks and clips, plus `output` settings. Paste one from the [docs](https://shotstack.io/docs/guide/) or [Studio](https://shotstack.io/studio/). |
 | **Callback URL** | Optional. Shotstack posts the finished render here — see [Waiting for a render](#waiting-for-a-render). |
 
 An edit can also generate its own media, which a template cannot do on its own.
@@ -149,54 +142,6 @@ then publishes it, as two steps. The Serve API answers 404 until the second step
 completes. The publish time varies, so a fixed Wait node does not fit. This
 operation waits for you, up to two minutes, and names the cause if the file does
 not appear. Do not add a Wait node after the render finishes.
-
-### Asset → Download File
-
-Fetches a hosted file as binary data, so the next node can attach it to an
-email or upload it.
-
-| Field | Notes |
-| --- | --- |
-| **File URL** | Defaults to `{{ $json.url }}`. Put this step after **Get Asset by Render ID** and it needs no setup. |
-| **File Name** | Optional. Leave blank to use the name in the URL. |
-
-Most posting nodes accept a URL and do not need this.
-
-### Reference → Get Reference
-
-**Put this step once, after the trigger.** Its output is the same for every
-item, and it is tens of thousands of characters. n8n stores that in the
-execution once per item, so inside a loop over 500 rows the run approaches
-n8n's default 16 MB payload ceiling on the Core setting alone.
-
-Hands a language model everything it needs to write a working edit. **Call this
-before asking an AI to build a video.**
-
-| Field | Notes |
-| --- | --- |
-| **Detail** | `Core` is enough to write a good edit. `Full` adds ten topic guides. `Everything` also fetches Shotstack's full documentation bundle. |
-| **Include Templates** | On by default. Adds this account's templates, so an AI can pick one instead of writing an edit from nothing. |
-
-The main output is `reference`, one string with two parts. Shotstack maintains
-both:
-
-| Part | Source |
-| --- | --- |
-| Every asset type with its nested shape, and every allowed value | Generated from the [`@shotstack/schemas`](https://www.npmjs.com/package/@shotstack/schemas) package |
-| How to write an edit that works and looks good | Shotstack's agent skill, from [`shotstack/shotstack-cli`](https://github.com/shotstack/shotstack-cli) |
-
-Because Shotstack maintains this guidance upstream, an improvement reaches this
-node without a rewrite here. The output carries `rulesSource`, which names the
-exact upstream commit. The command-line parts of the skill are left out: they
-tell the reader to run shell commands, and an AI inside n8n has no terminal.
-
-`Everything` also fetches
-[Shotstack's guide for language models](https://shotstack.io/docs/guide/llms-full.txt).
-The step succeeds even if that fetch fails. It then returns
-`documentationError`, which names what is missing.
-
-To check an edit before you render it, without an API key:
-[Shotstack CLI](https://shotstack.io/docs/guide/agents/cli/).
 
 ### Output shape
 
@@ -278,18 +223,6 @@ into the Wait node loops forever on a failed render, consuming your
 [rate limit](https://shotstack.io/docs/guide/architecting-an-application/limitations/)
 and holding an n8n execution open. Cap the number of passes as well.
 
-## Working with the file
-
-Two things to plan for when you use **Download File**:
-
-- **The node holds the whole file in memory** while the workflow runs. This
-  matches n8n's own HTTP Request node. A long 4K render can be hundreds of
-  megabytes. On a small n8n instance, pass the URL to the next step instead, or
-  configure [binary data storage](https://docs.n8n.io/hosting/scaling/binary-data/).
-- **The node fetches the URL you give it**, including one on your own network.
-  This is by design: it lets you download a render from private storage. Set the
-  field from a Shotstack step, not from untrusted input.
-
 ## Use with AI agents
 
 The node is exposed as a tool, so an **AI Agent** node can call it directly.
@@ -300,13 +233,20 @@ a forty-line timeline much less so. Save a template, then let the agent supply
 the values. Set **Merge Fields Source** to **JSON** so it can hand over the whole
 list at once.
 
+**Give the agent the writing rules, and this node for the render.** Shotstack
+publishes what a model needs to write a valid edit: the
+[full documentation](https://shotstack.io/docs/guide/llms-full.txt) as one text
+file, and the
+[agent skill](https://github.com/shotstack/shotstack-cli/blob/main/skills/shotstack/SKILL.md).
+Link to either from the Agent node's system message, or let the agent read it
+with an **HTTP Request** tool. Both stay current on their own, which a copy
+inside this node would not.
+
 **The defaults that read the previous step do not apply in tool mode.** Render
-ID and File URL default to `{{ $json.renderId || $json.id }}` and
-`{{ $json.url }}`. On the canvas those read the previous node. When an AI Agent
-calls the node, `$json` is the agent's own arguments, so the default finds
-nothing. Set each field the agent
-must supply to `{{ $fromAI('renderId') }}` or similar, so n8n asks the model for
-it by name.
+ID defaults to `{{ $json.renderId || $json.id }}`. On the canvas that reads the
+previous node. When an AI Agent calls the node, `$json` is the agent's own
+arguments, so the default finds nothing. Set each field the agent must supply to
+`{{ $fromAI('renderId') }}` or similar, so n8n asks the model for it by name.
 
 **Merge every field, or send none.** A partial merge replaces the template's
 stored list. It does not add to it. A field the agent leaves out is not filled

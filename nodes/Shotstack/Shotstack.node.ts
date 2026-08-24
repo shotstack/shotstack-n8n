@@ -3,7 +3,6 @@ import { renderDescription } from './resources/render';
 import { assetDescription } from './resources/asset';
 import { USER_AGENT } from './userAgent';
 import { EDIT_BASE_URL } from './environment';
-import { referenceDescription } from './resources/reference';
 import { getTemplates } from './listSearch/getTemplates';
 
 export class Shotstack implements INodeType {
@@ -46,17 +45,13 @@ export class Shotstack implements INodeType {
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				// Resources follow the products in Shotstack's OpenAPI spec: Render
-				// and Get Render Status are the Edit API, Get Asset by Render ID is
-				// the Serve API. Reference is the one addition, and it calls nothing.
+				// Resources follow the products in Shotstack's OpenAPI spec. Render
+				// and Get Render Status are the Edit API. Get Asset by Render ID is
+				// the Serve API. Every operation here has an entry in the spec.
 				options: [
 					{
 						name: 'Asset',
 						value: 'asset',
-					},
-					{
-						name: 'Reference',
-						value: 'reference',
 					},
 					{
 						name: 'Render',
@@ -67,7 +62,6 @@ export class Shotstack implements INodeType {
 			},
 			...renderDescription,
 			...assetDescription,
-			...referenceDescription,
 		],
 	};
 

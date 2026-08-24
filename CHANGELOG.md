@@ -6,7 +6,12 @@ First version. Published as `@shotstack/n8n-nodes-shotstack`.
 
 ### Added
 
-- **Shotstack** node with three resources. Operation names and stored values
+Every operation maps to an entry in Shotstack's OpenAPI spec. The node adds
+none of its own. To fetch the rendered bytes, use n8n's HTTP Request node with
+the URL this node returns. To give an AI the rules for writing an edit, link it
+to Shotstack's published documentation from the Agent node's system message.
+
+- **Shotstack** node with two resources. Operation names and stored values
   follow Shotstack's OpenAPI spec: the display name is the operation summary,
   the value is the `operationId`.
 - **Render → Render Asset** — `POST /render` with a Shotstack edit. It accepts
@@ -26,15 +31,6 @@ First version. Published as `@shotstack/n8n-nodes-shotstack`.
   API, for the permanent CDN URL. This operation waits up to two minutes for
   Shotstack to publish the file, so no Wait node is needed after the render
   finishes.
-- **Asset → Download File** — fetches a hosted file as binary data, so it can be
-  attached to an email or uploaded straight from n8n.
-- **Reference → Get Reference** — hands a language model everything it needs to
-  write a working edit. Two parts, both maintained by Shotstack: the allowed
-  values are generated from the `@shotstack/schemas` package, and the craft is
-  Shotstack's agent skill, vendored from `shotstack/shotstack-cli` at a pinned
-  commit. The command-line parts of that skill are left out, because an AI
-  inside n8n has no terminal. **Detail** chooses Core, Full or Everything.
-  **Include Templates** adds the templates saved in the account.
 - **Shotstack API** credential with a Sandbox and Production switch, defaulting
   to Sandbox so the node can be tried without spending credits. Includes a
   credential test. The node sends the API key to `api.shotstack.io` and to no

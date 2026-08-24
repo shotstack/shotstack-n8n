@@ -92,7 +92,7 @@ export const postRenderDescription: INodeProperties[] = [
 		typeOptions: { rows: 12 },
 		displayOptions: { show: showOnly },
 		description:
-			'The Shotstack edit: a timeline of tracks and clips, plus output settings. Paste one from the docs or Studio, or use Reference → Get Reference to have an AI write one. Keep this field in fixed mode. In expression mode, n8n evaluates Shotstack merge placeholders such as {{ HEADLINE }} and removes them.',
+			'The Shotstack edit: a timeline of tracks and clips, plus output settings. Paste one from the docs or Studio, or have an AI write one from the Shotstack guide. Keep this field in fixed mode. In expression mode, n8n evaluates Shotstack merge placeholders such as {{ HEADLINE }} and removes them.',
 		routing: {
 			send: { preSend: [buildRenderBody] },
 		},

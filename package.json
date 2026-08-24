@@ -37,12 +37,10 @@
     "lint:fix": "n8n-node lint --fix",
     "release": "n8n-node release",
     "prepublishOnly": "n8n-node prerelease",
-    "test": "npm run build && node test/package-loads.mjs && node test/credential-host-scope.mjs && node test/recipe-rules.mjs && node test/docs-match-ui.mjs && node test/environment-mapping.mjs && node test/wait-and-backoff.mjs && node test/submit-guards.mjs && node test/reference-survives-a-bad-key.mjs",
-    "vendor:skill": "node scripts/vendor-skill.mjs"
+    "test": "npm run build && node test/package-loads.mjs && node test/credential-host-scope.mjs && node test/docs-match-ui.mjs && node test/environment-mapping.mjs && node test/wait-and-backoff.mjs && node test/submit-guards.mjs"
   },
   "files": [
-    "dist",
-    "NOTICE"
+    "dist"
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,
@@ -56,7 +54,6 @@
   },
   "devDependencies": {
     "@n8n/node-cli": "^0.44.4",
-    "@shotstack/cli": "^0.8.1",
     "@shotstack/schemas": "1.17.0",
     "eslint": "9.32.0",
     "prettier": "3.6.2",

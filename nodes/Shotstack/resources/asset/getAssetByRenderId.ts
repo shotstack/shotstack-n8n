@@ -34,7 +34,7 @@ const EXTRA_FILES = /-(poster|thumb|thumbnail)\.[a-z0-9]+$/i;
  * Drops the poster and thumbnail, so the next step gets the rendered file.
  *
  * One render hosts several files. Without this the workflow runs once per
- * file, and Download File saves a JPEG named like a video.
+ * file, and a later step can pick up the poster instead of the video.
  */
 const keepMainFile: PostReceiveAction = async function (
 	this: IExecuteSingleFunctions,
