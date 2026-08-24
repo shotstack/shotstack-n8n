@@ -55,16 +55,15 @@ export class ShotstackApi implements ICredentialType {
 	/**
 	 * Sends the key to api.shotstack.io and nowhere else.
 	 *
-	 * Download File fetches whatever address the previous step produced. A
-	 * blanket header would hand the key to that host. Only the API needs a key;
-	 * cdn.shotstack.io serves public files.
+	 * Only the API needs a key. cdn.shotstack.io serves public files, and a
+	 * blanket header would hand the key to any other host a request reached.
 	 */
 	authenticate: IAuthenticate = async (
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> => {
-		// axios ignores baseURL when url is absolute, so read url first. Download
-		// File sets baseURL to an empty string, which ?? would keep.
+		// axios ignores baseURL when url is absolute, so read url first. A caller
+		// that sets baseURL to an empty string would keep it under ??.
 		//
 		// Match axios's own rule for "absolute", scheme optional. A protocol
 		// relative url like //evil.example.com/x is absolute to axios but not to

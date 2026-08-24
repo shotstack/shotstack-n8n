@@ -55,15 +55,6 @@ jobs:
         # without this step the release path runs no tests at all.
         run: 'npm test'
 
-      - name: Check the AI reference is still in step with the spec
-        run: |
-          node scripts/build-reference.mjs
-          if ! git diff --quiet -- nodes/Shotstack/reference/recipeReference.ts; then
-            echo "recipeReference.ts is out of step with the @shotstack/schemas package."
-            echo "Run: node scripts/build-reference.mjs   then commit the result."
-            exit 1
-          fi
-
       - name: Send a prerelease to the "next" tag, not "latest"
         # npm publishes to latest unless told otherwise. It does not read the
         # version, so an rc tag would otherwise be served to every install.

@@ -32,8 +32,6 @@ body:
         - Render → Render Template
         - Render → Get Render Status
         - Asset → Get Asset by Render ID
-        - Asset → Download File
-        - Reference → Get Reference
         - Installing the node
     validations:
       required: true

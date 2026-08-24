@@ -105,17 +105,8 @@ check('History', 'working tree clean', () => {
 
 // Does it follow the OpenAPI spec, which is what Derk asked for
 const OAS = 'node_modules/@shotstack/schemas/dist/api.bundled.json';
-const OURS = new Set(['download', 'getReference']); // deliberately not API operations
-
-// Get Reference is ours, but the request under it is not: it issues the spec's
-// getTemplates call, which proves the key and lists the account's templates.
-// A declarative node cannot have an operation that sends no request.
-const BORROWS = { getReference: 'getTemplates' };
-
-// Download File is the only operation that calls no Shotstack endpoint at all.
-// Its target is user data, so there is no route to check. The properties that
-// keep it safe are checked instead, below.
-const NO_ENDPOINT = new Set(['download']);
+// No exemptions. Every operation the node offers is in the spec, so anything
+// the spec does not name is a mistake rather than a documented exception.
 
 check('Follows the spec', 'every operation value is a real operationId', () => {
 	if (!existsSync(OAS)) return { ok: false, actual: 'run npm ci first' };
@@ -130,7 +121,7 @@ check('Follows the spec', 'every operation value is a real operationId', () => {
 	const values = node()
 		.description.properties.filter((p) => p.name === 'operation')
 		.flatMap((p) => (p.options ?? []).map((o) => o.value));
-	const strays = values.filter((v) => !ids.has(v) && !OURS.has(v));
+	const strays = values.filter((v) => !ids.has(v));
 	return {
 		ok: strays.length === 0,
 		actual: strays.length ? `not in spec: ${strays.join(', ')}` : `${values.length} operations, all accounted for`,
@@ -198,67 +189,70 @@ check('Follows the spec', 'every operation calls the method and path the spec gi
 	let checked = 0;
 	for (const p of properties.filter((x) => x.name === 'operation')) {
 		for (const option of p.options ?? []) {
-			// An operation whose value is not an operationId may still call a real
-			// endpoint. Get Reference issues GET /templates, which the spec names
-			// getTemplates, so resolve it through the spec rather than declaring a
-			// path here: a path written beside the code it checks is not a check.
-			const expected = spec[BORROWS[option.value] ?? option.value];
-			if (!expected) continue;
+			const expected = spec[option.value];
+			if (!expected) {
+				wrong.push(`${option.value}: the spec has no operation by that name`);
+				continue;
+			}
 			checked += 1;
 			const actual = routeFor(option.value);
 			if (actual !== expected) wrong.push(`${option.value}: node sends "${actual}", spec says "${expected}"`);
 		}
 	}
 
-	// Count the skips and assert the total. A bare `continue` lets an exemption
-	// widen in the same edit that breaks something; this way adding one changes
-	// a number the check compares. It also catches the whole spec failing to
-	// load, which previously left every operation skipped and the check green.
+	// Assert the total. Without it a spec that failed to load would skip every
+	// operation and leave the check green.
 	const total = properties
 		.filter((x) => x.name === 'operation')
 		.reduce((n, p) => n + (p.options ?? []).length, 0);
-	if (checked + NO_ENDPOINT.size !== total) {
-		wrong.push(`checked ${checked} of ${total} with ${NO_ENDPOINT.size} exempt: something was skipped silently`);
-	}
+	if (checked !== total) wrong.push(`checked ${checked} of ${total}: something was skipped silently`);
 	return {
 		ok: wrong.length === 0,
-		actual: wrong.length ? wrong.join(' | ') : `${checked} routes checked against the spec, ${NO_ENDPOINT.size} exempt`,
+		actual: wrong.length ? wrong.join(' | ') : `${checked} of ${total} routes match the spec, none exempt`,
 	};
 });
-check('Follows the spec', 'Download File cannot carry the API key to another host', () => {
-	// There is no route to check here: the target is whatever URL the workflow
-	// supplies. Two properties keep the key from following it, and neither is
-	// obvious enough to survive a tidy-up unasserted.
-	const properties = node().description.properties;
-	const field = properties.find((p) => p.name === 'fileUrl');
-	const missing = [];
-
-	// Without this the node baseURL applies, a relative or protocol relative
-	// url resolves against api.shotstack.io, and the credential attaches the key.
-	if (field?.routing?.request?.baseURL !== '') missing.push('fileUrl no longer blanks baseURL');
-
-	// The credential must treat a scheme-less // url as absolute, the way axios
-	// does, or it reads one as relative and falls back to baseURL.
-	const credential = readFileSync('dist/credentials/ShotstackApi.credentials.js', 'utf8');
-	if (!/\[a-z\]\[a-z\\d\+\\-\.\]\*:\)\?/.test(credential) && !credential.includes('a-z\\d+\\-.')) {
-		missing.push('the credential no longer matches axios on protocol relative urls');
-	}
-	return { ok: missing.length === 0, actual: missing.length ? missing.join('; ') : 'baseURL blanked, absolute-url rule matches axios' };
-});
-check('Follows the spec', 'the two non-spec operations say so', () => {
-	const missing = [];
-	for (const p of node().description.properties.filter((x) => x.name === 'operation')) {
-		for (const o of p.options ?? []) {
-			if (!OURS.has(o.value)) continue;
-			if (!/not an api operation|no shotstack endpoint|reads the url|calls no/i.test(o.description ?? '')) {
-				missing.push(o.value);
-			}
-		}
-	}
+check('Follows the spec', 'no operation is outside the spec', () => {
+	// Two used to be. Download File duplicated n8n's HTTP Request node, and Get
+	// Reference re-served files Shotstack already publishes. Both were dropped
+	// before release rather than maintained forever.
+	if (!existsSync(OAS)) return { ok: false, actual: 'run npm ci first' };
+	const oas = JSON.parse(readFileSync(OAS, 'utf8'));
+	const ids = new Set(
+		Object.values(oas.paths).flatMap((path) => Object.values(path).map((op) => op.operationId).filter(Boolean)),
+	);
+	const values = node()
+		.description.properties.filter((p) => p.name === 'operation')
+		.flatMap((p) => (p.options ?? []).map((o) => o.value));
+	const outside = values.filter((v) => !ids.has(v));
 	return {
-		ok: missing.length === 0,
-		actual: missing.length ? `${missing.join(', ')} do not explain themselves` : 'both explained in their description',
+		ok: outside.length === 0,
+		actual: outside.length ? `outside the spec: ${outside.join(', ')}` : `${values.length} operations, every one in the spec`,
 	};
+});
+// Both Render ID fields read the id on the incoming item, so one operation
+// emitting id for something other than the render sends the wrong value to
+// Shotstack. It answers 400, and the node then reports a missing render, which
+// reads as a credential problem. Get Asset by Render ID emits assetId for this
+// reason. Any output holding both names is the same trap again.
+check('Follows the spec', 'no output calls two different things id', () => {
+	const sets = [];
+	const walk = (list) => {
+		for (const property of list ?? []) {
+			const steps = [
+				...(property.routing?.output?.postReceive ?? []),
+				...(property.options ?? []).flatMap((o) => o.routing?.output?.postReceive ?? []),
+			];
+			for (const step of steps) {
+				if (step.type === 'setKeyValue') sets.push(Object.keys(step.properties ?? {}));
+			}
+			for (const option of property.options ?? []) walk(option.values);
+		}
+	};
+	walk(node().description.properties);
+	const wrong = sets
+		.filter((keys) => keys.includes('id') && keys.includes('renderId'))
+		.map((keys) => `one output emits both id and renderId: ${keys.join(', ')}`);
+	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : `${sets.length} outputs, none ambiguous` };
 });
 check('Follows the spec', 'an AI agent gets a real tool description', () => {
 	// n8n builds the tool description from `action`, not `description`.
@@ -314,18 +308,6 @@ const MAIN_REF = ['refs/heads/main', 'refs/remotes/origin/main'].find(
 	(ref) => quiet(`git rev-parse --verify --quiet ${ref}`) === 0,
 );
 
-const REFERENCE_FILE = 'nodes/Shotstack/resources/reference/index.ts';
-const REFERENCE_KEYS = [
-	'reference',
-	'rulesSource',
-	'referenceChars',
-	'templates',
-	'templateCount',
-	'credentialError',
-	'documentation',
-	'documentationChars',
-	'documentationError',
-];
 
 // Frozen names no walk of the built node reaches. Each names the file whose
 // row must carry it, and how to prove the file still writes it. The proof is
@@ -338,22 +320,6 @@ const UNWALKABLE = [
 		// the package name to the node type. A third place either can break.
 		file: 'nodes/Shotstack/Shotstack.node.json',
 		names: () => [JSON.parse(readFileSync('nodes/Shotstack/Shotstack.node.json', 'utf8')).node],
-	},
-	{
-		file: REFERENCE_FILE,
-		names: () => REFERENCE_KEYS,
-		proof: (text, key) => new RegExp(`\\bjson\\.${key}\\s*=|^\\t\\t${key}:`, 'm').test(text),
-	},
-	{
-		// Reaches the user as $json.rulesSource.<key>.
-		file: 'nodes/Shotstack/reference/skill.ts',
-		names: () => ['repo', 'ref', 'license', 'url'],
-		proof: (text, key) => new RegExp(`^\\s*"${key}":`, 'm').test(text),
-	},
-	{
-		file: 'nodes/Shotstack/resources/asset/download.ts',
-		names: () => ['data'],
-		proof: (text, key) => new RegExp(`binary:\\s*\\{\\s*${key}\\b`).test(text),
 	},
 ];
 
@@ -444,31 +410,6 @@ check('Docs', 'the README names the keys Simplify really emits', () => {
 	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : `${checked} Simplify rows match the node` };
 });
 
-// Both Render ID fields read the id on the incoming item, so one operation
-// emitting id for something other than the render sends the wrong value to
-// Shotstack. It answers 400, and the node then reports a missing render, which
-// reads as a credential problem. Get Asset by Render ID emits assetId for this
-// reason. Any output holding both names is the same trap again.
-check('Follows the spec', 'no output calls two different things id', () => {
-	const sets = [];
-	const walk = (list) => {
-		for (const property of list ?? []) {
-			const steps = [
-				...(property.routing?.output?.postReceive ?? []),
-				...(property.options ?? []).flatMap((o) => o.routing?.output?.postReceive ?? []),
-			];
-			for (const step of steps) {
-				if (step.type === 'setKeyValue') sets.push(Object.keys(step.properties ?? {}));
-			}
-			for (const option of property.options ?? []) walk(option.values);
-		}
-	};
-	walk(node().description.properties);
-	const wrong = sets
-		.filter((keys) => keys.includes('id') && keys.includes('renderId'))
-		.map((keys) => `one output emits both id and renderId: ${keys.join(', ')}`);
-	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : `${sets.length} outputs, none ambiguous` };
-});
 
 // MAINTAINING.md names every identifier a saved workflow keeps, so a reviewer
 // knows which edits reach users. The section says everything else is free to
@@ -492,18 +433,6 @@ check('Docs', 'the guide names every name a saved workflow keeps', () => {
 		}
 	}
 
-	// The reference operation is the one that grows output keys, in two shapes:
-	// assigned later, or declared in the literal the object starts as. Scanning
-	// only the first missed the second.
-	const referenceText = readFileSync(REFERENCE_FILE, 'utf8');
-	const literal = referenceText.match(/const json[^=]*=\s*\{([\s\S]*?)\n\t\};/);
-	const written = [
-		...[...referenceText.matchAll(/\bjson\.(\w+)\s*=/g)].map((m) => m[1]),
-		...[...(literal?.[1] ?? '').matchAll(/^\t\t(\w+):/gm)].map((m) => m[1]),
-	];
-	for (const key of written) {
-		if (!REFERENCE_KEYS.includes(key)) wrong.push(`${REFERENCE_FILE} writes ${key}, unlisted here and in the guide`);
-	}
 
 	// One thing this does not prove: that each name sits in the row for the file
 	// it comes from. The section is read as one slab, so a misfiled name passes.

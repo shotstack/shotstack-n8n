@@ -151,8 +151,7 @@ export const getRenderDescription: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		// A render step returns the render as "id"; Get Asset by Render ID
-		// returns it as "renderId". Read either, so any chain works with no
-		// setup, as Download File does.
+		// returns it as "renderId". Read either, so any chain works with no setup.
 		default: '={{ $json.renderId || $json.id }}',
 		placeholder: '4a37ef85-b4d1-4b4a-90be-6515290c5091',
 		displayOptions: { show: showOnly },
