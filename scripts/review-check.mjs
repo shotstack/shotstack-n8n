@@ -105,9 +105,6 @@ check('History', 'working tree clean', () => {
 
 // Does it follow the OpenAPI spec, which is what Derk asked for
 const OAS = 'node_modules/@shotstack/schemas/dist/api.bundled.json';
-// No exemptions. Every operation the node offers is in the spec, so anything
-// the spec does not name is a mistake rather than a documented exception.
-
 check('Follows the spec', 'every operation value is a real operationId', () => {
 	if (!existsSync(OAS)) return { ok: false, actual: 'run npm ci first' };
 	const oas = JSON.parse(readFileSync(OAS, 'utf8'));
@@ -144,9 +141,8 @@ check('Follows the spec', 'display names match the spec summary', () => {
 	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : 'all match' };
 });
 check('Follows the spec', 'every operation calls the method and path the spec gives it', () => {
-	// The checks above compare names. Names being right proves nothing about the
-	// request: changing url to '/rendr' left every other check green, so a node
-	// that called the wrong endpoint would have shipped clean.
+	// Names being right proves nothing about the request. A wrong url passes
+	// every other check.
 	if (!existsSync(OAS)) return { ok: false, actual: 'run npm ci first' };
 	const oas = JSON.parse(readFileSync(OAS, 'utf8'));
 
@@ -212,9 +208,6 @@ check('Follows the spec', 'every operation calls the method and path the spec gi
 	};
 });
 check('Follows the spec', 'no operation is outside the spec', () => {
-	// Two used to be. Download File duplicated n8n's HTTP Request node, and Get
-	// Reference re-served files Shotstack already publishes. Both were dropped
-	// before release rather than maintained forever.
 	if (!existsSync(OAS)) return { ok: false, actual: 'run npm ci first' };
 	const oas = JSON.parse(readFileSync(OAS, 'utf8'));
 	const ids = new Set(
@@ -229,11 +222,8 @@ check('Follows the spec', 'no operation is outside the spec', () => {
 		actual: outside.length ? `outside the spec: ${outside.join(', ')}` : `${values.length} operations, every one in the spec`,
 	};
 });
-// Both Render ID fields read the id on the incoming item, so one operation
-// emitting id for something other than the render sends the wrong value to
-// Shotstack. It answers 400, and the node then reports a missing render, which
-// reads as a credential problem. Get Asset by Render ID emits assetId for this
-// reason. Any output holding both names is the same trap again.
+// Both Render ID fields read the id on the incoming item. An output that names
+// something else id sends the wrong value to Shotstack, which answers 400.
 check('Follows the spec', 'no output calls two different things id', () => {
 	const sets = [];
 	const walk = (list) => {
@@ -255,10 +245,8 @@ check('Follows the spec', 'no output calls two different things id', () => {
 	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : `${sets.length} outputs, none ambiguous` };
 });
 check('Follows the spec', 'an AI agent gets a real tool description', () => {
-	// n8n builds the tool description from `action`, not `description`, as
-	// `${action} in ${defaults.name}`. So the bar is a phrase that still says
-	// something after "in Shotstack" is appended. Three words clears a bare verb
-	// like "Render" or "Get a render", which is the failure this exists for.
+	// n8n builds the tool description from `action`, as `${action} in Shotstack`.
+	// Two words or fewer is a bare verb and says nothing after that is appended.
 	const weak = [];
 	for (const p of node().description.properties.filter((x) => x.name === 'operation')) {
 		for (const o of p.options ?? []) {
@@ -280,17 +268,15 @@ check('Docs', 'no Shotstack API behaviour restated in the README', () => {
 	const hits = smells.filter(([re]) => re.test(readme)).map(([, why]) => why);
 	return { ok: hits.length === 0, actual: hits.length ? hits.join('; ') : 'none found' };
 });
-// Every markdown file has to earn its place. A repository grows documents on its
-// own, and a reader who meets four of them cannot tell which one is current.
-// Adding one to this list is the decision; the check only stops it drifting.
+// Adding a file to this list is the decision. The check only stops the list
+// drifting from what the repository holds.
 const DOCS_ALLOWED = new Set([
 	'README.md', // the npm and n8n listing page
 	'CHANGELOG.md', // what changed between published versions
 	'LICENSE.md', // package.json declares MIT, and npm expects the file
 ]);
-// The maintenance guide is internal and lives on dev only. It names the kill
-// line and the gaps in our own cover, which do not belong beside a public
-// package. Nothing links to it, so its absence on main breaks no reference.
+// The maintenance guide is internal and lives on dev only. Nothing links to it,
+// so its absence on main breaks no reference.
 const DEV_ONLY = 'MAINTAINING.md';
 // On a pull request GitHub checks out a detached merge commit, so asking git
 // for the branch answers "HEAD" and a release PR reads as a dev branch. Take
@@ -312,10 +298,9 @@ const MAIN_REF = ['refs/heads/main', 'refs/remotes/origin/main'].find(
 );
 
 
-// Frozen names no walk of the built node reaches. Each names the file whose
-// row must carry it, and how to prove the file still writes it. The proof is
-// structural on purpose: a bare word test passes on a comment, so a key could
-// be deleted while the word survives in prose.
+// Frozen names no walk of the built node reaches. Each names the file whose row
+// must carry it, and how to prove the file still writes it. Keep that proof
+// structural: a bare word test also passes on a comment.
 const UNWALKABLE = [
 	{ file: 'package.json', names: () => [pkg.name, ...pkg.n8n.nodes, ...pkg.n8n.credentials] },
 	{
@@ -330,8 +315,7 @@ const UNWALKABLE = [
  * Every name a rename can reach a user through, read from the built node.
  *
  * Mostly what n8n stores in a saved workflow. Also the list method key, which
- * one file exports and another quotes, so a half rename breaks the picker with
- * no error. Both ends are collected, so renaming one fails this check twice.
+ * two files must agree on, so both ends are collected here.
  */
 const frozenNames = () => {
 	const names = new Set();
@@ -375,9 +359,8 @@ const frozenNames = () => {
 	return names;
 };
 
-// The README lists what Simplify returns, and a reader wires the next step
-// from that list. It named eight of the nine keys for a year, so the one it
-// missed was invisible unless you ran the node and looked.
+// A reader wires the next step from this list. The README named eight of the
+// nine keys, and the missing one was invisible without running the node.
 check('Docs', 'the README names the keys Simplify really emits', () => {
 	const properties = node().description.properties;
 	const displayName = new Map();
@@ -414,10 +397,8 @@ check('Docs', 'the README names the keys Simplify really emits', () => {
 });
 
 
-// MAINTAINING.md names every identifier a saved workflow keeps, so a reviewer
-// knows which edits reach users. The section says everything else is free to
-// change, so an omission does not merely fail to help: it gives the wrong
-// answer. Checking the file paths alone let nine names go unlisted.
+// The guide says everything it does not name is free to change, so a name
+// missing from it is not a gap. It is a wrong answer.
 check('Docs', 'the guide names every name a saved workflow keeps', () => {
 	if (branch === 'main') return { ok: true, actual: 'the guide is not on main' };
 	const section =
@@ -437,17 +418,15 @@ check('Docs', 'the guide names every name a saved workflow keeps', () => {
 	}
 
 
-	// One thing this does not prove: that each name sits in the row for the file
-	// it comes from. The section is read as one slab, so a misfiled name passes.
-	// Omission is the dangerous case and that is caught; a misfiled name is
-	// still visible to anyone reading the table.
+	// This does not prove a name sits in the row for its own file. The section is
+	// read as one block, so a misfiled name passes. Omission is the dangerous
+	// case and that is caught.
 	const all = new Set([...frozenNames(), ...unreachable]);
 	const tracked = new Set(sh('git ls-files').split('\n'));
 	const listed = new Set([...section.matchAll(/`([^`]+)`/g)].map((m) => m[1]));
 	for (const name of all) if (!listed.has(name)) wrong.push(`unlisted ${name}`);
-	// No exemption. A backticked token is either a name the code still holds or
-	// a file the repo still tracks. Anything else is stale, and a rule that
-	// waves a shape through is how the last gap stayed open.
+	// No exemption by shape. A backticked token is either a name the code holds
+	// or a file the repo tracks.
 	for (const token of listed) {
 		if (!all.has(token) && !tracked.has(token)) {
 			wrong.push(`listed but neither a live name nor a tracked file: ${token}`);
@@ -482,9 +461,7 @@ check('Docs', 'the maintenance guide never reaches main', () => {
 	if (branch === 'main' && tracked) return { ok: false, actual: `${DEV_ONLY} is in this main checkout` };
 	return { ok: true, actual: branch === 'main' ? 'absent, correct for main' : 'on this branch, absent from main' };
 });
-// A doc that names a file, an anchor or a command is making a claim. Check the
-// claim. This is the whole class of error a reader spots at a glance, which is
-// how this review started.
+// A doc that names a file, an anchor or a command is making a claim. Check it.
 check('Docs', 'every path, anchor and command the docs name really exists', () => {
 	const wrong = [];
 	const files = sh('git ls-files "*.md"').split('\n').filter(Boolean);
@@ -518,9 +495,7 @@ check('Docs', 'every path, anchor and command the docs name really exists', () =
 			for (const m of line.matchAll(/node ((?:scripts|test)\/[\w.-]+)/g)) {
 				if (!existsSync(m[1])) wrong.push(`${at} node ${m[1]} does not exist`);
 			}
-			// A number quoted for a field must be the number the field ships. The
-			// README advertised "10 by default, 60 at most" for a week after the
-			// values became 5 and 10, and no name-matching check could see it.
+			// A number quoted for a field must be the number the field ships.
 			// [^\n] not [^|]: the field name and its numbers sit in different
 			// cells of a markdown table, so the match has to cross a pipe.
 			for (const m of line.matchAll(/\*\*([A-Z][\w ()]+?)\*\*[^\n]*?(\d+) by default, (\d+) at most/g)) {
@@ -623,9 +598,8 @@ check('Sanity', 'no export that nothing imports', () => {
 		for (const m of body.matchAll(/export const (\w+)/g)) {
 			const name = m[1];
 			// Imported by name anywhere, or re-exported. Same-file use does not
-			// count. The tests reach built output through createRequire, so a
-			// destructured require counts as a use too: without that this reads a
-			// tested export as dead and pushes you to delete it or stop testing it.
+			// count. A destructured require counts too, because the tests reach
+			// built output that way and would otherwise read as dead code.
 			const importedElsewhere =
 				new RegExp(`import[^;]*\\b${name}\\b[^;]*from`).test(imports) ||
 				new RegExp(`\\{[^}]*\\b${name}\\b[^}]*\\}\\s*=\\s*require\\(`).test(imports);
