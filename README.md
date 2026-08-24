@@ -208,8 +208,9 @@ In that case use the wait above, or the wait loop below.
 
 ### Wait loop
 
-Use this when neither of the above fits: a render longer than 60 minutes, or an
-n8n that Shotstack cannot reach.
+Use this when neither of the above fits: a render longer than the 10 minute
+ceiling on Give Up After, and an n8n that Shotstack cannot reach with a
+callback.
 
 ```
 Render Asset → Wait (20s) → Get Render Status → Switch on {{$json.status}}
@@ -282,7 +283,7 @@ the exact job instead of guessing from a description.
 
 Do not open a public issue for a problem that could expose an API key or
 someone's rendered files. Use private vulnerability reporting on the repository
-Security tab.
+Security tab, or email support@shotstack.io.
 
 ## Licence
 
