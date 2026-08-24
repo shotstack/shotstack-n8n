@@ -27,7 +27,7 @@ export const assetDescription: INodeProperties[] = [
 				name: 'Get Asset by Render ID',
 				value: 'getAssetByRenderId',
 				description: 'Get the permanent CDN URL for a finished render',
-				action: 'Get the permanent URL for a finished render',
+				action: 'Get the hosted file for a render',
 				routing: {
 					request: {
 						method: 'GET',

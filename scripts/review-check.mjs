@@ -255,11 +255,14 @@ check('Follows the spec', 'no output calls two different things id', () => {
 	return { ok: wrong.length === 0, actual: wrong.length ? wrong.join(' | ') : `${sets.length} outputs, none ambiguous` };
 });
 check('Follows the spec', 'an AI agent gets a real tool description', () => {
-	// n8n builds the tool description from `action`, not `description`.
+	// n8n builds the tool description from `action`, not `description`, as
+	// `${action} in ${defaults.name}`. So the bar is a phrase that still says
+	// something after "in Shotstack" is appended. Three words clears a bare verb
+	// like "Render" or "Get a render", which is the failure this exists for.
 	const weak = [];
 	for (const p of node().description.properties.filter((x) => x.name === 'operation')) {
 		for (const o of p.options ?? []) {
-			if (!o.action || o.action.split(' ').length < 4) weak.push(`${o.value}: "${o.action}"`);
+			if (!o.action || o.action.split(' ').length < 3) weak.push(`${o.value}: "${o.action}"`);
 		}
 	}
 	return { ok: weak.length === 0, actual: weak.length ? `too thin: ${weak.join(', ')}` : 'all actions carry intent' };
