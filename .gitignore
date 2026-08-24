@@ -7,3 +7,4 @@ rqs.json
 
 # release-it regenerates this; the real changelog is CHANGELOG.md
 .auto-changelog.md
+nodes/Shotstack/userAgent.ts

@@ -95,30 +95,6 @@ check('History', 'no Co-Authored-By trailers', () => {
 	const n = (sh('git log --format=%B').match(/^[ \t]*co-authored-by:/gim) || []).length;
 	return { ok: n === 0, actual: String(n) };
 });
-// release-it runs the build before it bumps the version, and nothing rebuilds
-// after. So a release commit carries the previous version in userAgent.ts while
-// package.json holds the new one. CI rebuilds, so the published package is
-// right and only the repository is wrong, which is why this needs saying.
-check('n8n requirements', 'the User-Agent version matches package.json', () => {
-	// Read the commit, not the working tree. This script builds first, and the
-	// build regenerates userAgent.ts, which would heal the drift before the
-	// check could see it.
-	const committed = (path) => {
-		try {
-			return sh(`git show HEAD:${path}`);
-		} catch {
-			return '';
-		}
-	};
-	const shipped = committed('nodes/Shotstack/userAgent.ts').match(/USER_AGENT = '([^']+)'/)?.[1];
-	const version = JSON.parse(committed('package.json') || '{}').version;
-	const expected = `shotstack-n8n-node/${version}`;
-	return {
-		ok: shipped === expected,
-		actual: shipped === expected ? shipped : `${shipped} committed, but package.json says ${version}. Run npm run build and amend`,
-	};
-});
-
 check('History', 'working tree clean', () => {
 	// Ignore this script, which is meant to be dropped in and deleted again.
 	const dirty = sh('git status --porcelain')
