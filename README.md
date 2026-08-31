@@ -267,6 +267,17 @@ built-in nodes only. The API calls are identical. This node removes the wiring.
 Tested against n8n 2.35. Requires Node.js 20.19 or later; n8n 2.x itself asks for
 22.22 or later.
 
+## Telemetry
+
+Every request carries two headers, so Shotstack can tell which renders came from
+this node:
+
+- `User-Agent: shotstack-n8n-node/<version>`
+- `x-shotstack-origin: n8n`
+
+That is all. The node sends nothing else about you, your workflow or your edit,
+and it talks to no host except `api.shotstack.io`.
+
 ## Resources
 
 - [Shotstack documentation](https://shotstack.io/docs/guide/)

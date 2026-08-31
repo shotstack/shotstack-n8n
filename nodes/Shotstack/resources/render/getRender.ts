@@ -7,7 +7,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { requireRenderId } from '../renderId';
-import { USER_AGENT } from '../../userAgent';
+import { TELEMETRY_HEADERS } from '../../telemetry';
 import { isRateLimited, pollGapMs, RATE_LIMIT_HELP } from '../../polling';
 
 const showOnly = {
@@ -64,7 +64,7 @@ const waitForRender = async function (
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,
 				timeout: REQUEST_TIMEOUT_MS,
-				headers: { 'User-Agent': USER_AGENT },
+				headers: { ...TELEMETRY_HEADERS },
 			})) as { statusCode: number; body: IDataObject; headers: IDataObject };
 			lastCode = response.statusCode;
 		} catch {

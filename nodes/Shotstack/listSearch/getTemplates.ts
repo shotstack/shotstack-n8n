@@ -4,7 +4,7 @@ import type {
 	INodeListSearchResult,
 	IDataObject,
 } from 'n8n-workflow';
-import { USER_AGENT } from '../userAgent';
+import { TELEMETRY_HEADERS } from '../telemetry';
 import { apiPathFor } from '../environment';
 
 type TemplateSummary = {
@@ -29,7 +29,7 @@ export async function getTemplates(
 		url: `https://api.shotstack.io/edit/${apiPathFor(credentials?.environment)}/templates`,
 		json: true,
 		timeout: 30000,
-		headers: { 'User-Agent': USER_AGENT },
+		headers: { ...TELEMETRY_HEADERS },
 	})) as IDataObject;
 
 	const payload = (response?.response ?? {}) as IDataObject;

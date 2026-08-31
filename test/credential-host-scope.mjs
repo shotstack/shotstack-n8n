@@ -81,15 +81,28 @@ for (const name of files) {
 	callers += 1;
 
 	try {
-		assert.match(source, /USER_AGENT|user-agent/i);
+		assert.match(source, /TELEMETRY_HEADERS/);
 		passed += 1;
-		console.log(`  ok    ${name.replace(/\\/g, '/')} sends a User-Agent`);
+		console.log(`  ok    ${name.replace(/\\/g, '/')} sends the telemetry headers`);
 	} catch {
 		failed += 1;
-		console.error(`  FAIL  ${name.replace(/\\/g, '/')} makes requests without a User-Agent`);
+		console.error(`  FAIL  ${name.replace(/\\/g, '/')} makes requests without the telemetry headers`);
 	}
 }
 assert.ok(callers >= 3, `only found ${callers} request-making files — has the scan broken?`);
+
+// The scan above proves every caller spreads the headers. This proves what
+// they hold, so a rename of the origin cannot pass unnoticed.
+const { TELEMETRY_HEADERS } = await import(new URL('Shotstack/telemetry.js', dist));
+try {
+	assert.match(TELEMETRY_HEADERS['User-Agent'], /^shotstack-n8n-node\//);
+	assert.equal(TELEMETRY_HEADERS['x-shotstack-origin'], 'n8n');
+	passed += 1;
+	console.log('  ok    the headers name this node and its origin');
+} catch {
+	failed += 1;
+	console.error(`  FAIL  telemetry headers are ${JSON.stringify(TELEMETRY_HEADERS)}`);
+}
 
 if (failed) {
 	console.error(`\n${failed} failing`);

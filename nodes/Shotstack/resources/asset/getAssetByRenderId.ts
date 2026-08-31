@@ -9,7 +9,7 @@ import type {
 	PostReceiveAction,
 } from 'n8n-workflow';
 import { isRenderId } from '../renderId';
-import { USER_AGENT } from '../../userAgent';
+import { TELEMETRY_HEADERS } from '../../telemetry';
 import { apiPathFor, SERVE_BASE_URL } from '../../environment';
 import { isRateLimited, pollGapMs, RATE_LIMIT_HELP } from '../../polling';
 
@@ -78,7 +78,7 @@ async function readRenderStatus(
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,
 				timeout: 30000,
-				headers: { 'User-Agent': USER_AGENT },
+				headers: { ...TELEMETRY_HEADERS },
 			},
 		)) as { statusCode: number; body: IDataObject };
 
@@ -187,7 +187,7 @@ const waitForHostedAsset = async function (
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,
 				timeout: 30000,
-				headers: { 'User-Agent': USER_AGENT },
+				headers: { ...TELEMETRY_HEADERS },
 			})) as { statusCode: number; body: IDataObject; headers: IDataObject };
 		} catch {
 			// A dropped connection is not an answer. Keep waiting.
