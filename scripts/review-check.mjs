@@ -88,11 +88,9 @@ check('n8n requirements', 'provenance configured', () => ({
 check('n8n requirements', 'licence', () => ({ ok: pkg.license === 'MIT', actual: pkg.license }));
 
 // Is the history clean
-// Shotstack counts this node by the origin header, and the vocabulary it joins
-// (api, cli, mcp, studio, playground) has no way back if a request omits it.
 // The declarative routes inherit requestDefaults, but the wait loops and the
-// template picker build their own requests, and those are easy to add without
-// noticing. So require every hand-built header block to spread the shared one.
+// template picker build their own requests. A new one is easy to add without
+// noticing, so require every header block to spread the shared one.
 check('n8n requirements', 'every request names this node as its origin', () => {
 	const sources = sh('git ls-files "nodes/**/*.ts"').split(String.fromCharCode(10)).filter(Boolean);
 	const wrong = [];
@@ -330,9 +328,7 @@ const MAIN_REF = ['refs/heads/main', 'refs/remotes/origin/main'].find(
 const UNWALKABLE = [
 	{ file: 'package.json', names: () => [pkg.name, ...pkg.n8n.nodes, ...pkg.n8n.credentials] },
 	{
-		// Shotstack's render log keeps this. Read the built value and prove the
-		// source still declares it, so a rename fails here rather than quietly
-		// splitting this node's renders from the ones already counted.
+		// Read the built value, then prove the source still declares it.
 		file: 'nodes/Shotstack/telemetry.ts',
 		names: () => [
 			req(resolve(process.cwd(), 'dist/nodes/Shotstack/telemetry.js')).TELEMETRY_HEADERS[
