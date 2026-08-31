@@ -88,6 +88,32 @@ check('n8n requirements', 'provenance configured', () => ({
 check('n8n requirements', 'licence', () => ({ ok: pkg.license === 'MIT', actual: pkg.license }));
 
 // Is the history clean
+// Shotstack counts this node by the origin header, and the vocabulary it joins
+// (api, cli, mcp, studio, playground) has no way back if a request omits it.
+// The declarative routes inherit requestDefaults, but the wait loops and the
+// template picker build their own requests, and those are easy to add without
+// noticing. So require every hand-built header block to spread the shared one.
+check('n8n requirements', 'every request names this node as its origin', () => {
+	const sources = sh('git ls-files "nodes/**/*.ts"').split(String.fromCharCode(10)).filter(Boolean);
+	const wrong = [];
+	let sites = 0;
+	for (const file of sources) {
+		if (file.endsWith('telemetry.ts')) continue;
+		const text = readFileSync(file, 'utf8');
+		for (const [, block] of text.matchAll(/headers:\s*\{([^}]*)\}/g)) {
+			sites += 1;
+			if (!block.includes('...TELEMETRY_HEADERS')) wrong.push(`${file}: headers without TELEMETRY_HEADERS`);
+		}
+	}
+	const built = req(resolve(process.cwd(), 'dist/nodes/Shotstack/telemetry.js')).TELEMETRY_HEADERS;
+	if (built['x-shotstack-origin'] !== 'n8n') wrong.push(`origin is "${built['x-shotstack-origin']}", not n8n`);
+	if (sites === 0) wrong.push('found no header blocks at all, so this proved nothing');
+	return {
+		ok: wrong.length === 0,
+		actual: wrong.length ? wrong.join(' | ') : `${sites} request sites, all send origin ${built['x-shotstack-origin']}`,
+	};
+});
+
 check('History', 'no Co-Authored-By trailers', () => {
 	// A trailer, so anchor it: a line of its own ending in a colon. Naming the
 	// rule in a commit body is not breaking it. Case-insensitive, because
@@ -303,6 +329,18 @@ const MAIN_REF = ['refs/heads/main', 'refs/remotes/origin/main'].find(
 // structural: a bare word test also passes on a comment.
 const UNWALKABLE = [
 	{ file: 'package.json', names: () => [pkg.name, ...pkg.n8n.nodes, ...pkg.n8n.credentials] },
+	{
+		// Shotstack's render log keeps this. Read the built value and prove the
+		// source still declares it, so a rename fails here rather than quietly
+		// splitting this node's renders from the ones already counted.
+		file: 'nodes/Shotstack/telemetry.ts',
+		names: () => [
+			req(resolve(process.cwd(), 'dist/nodes/Shotstack/telemetry.js')).TELEMETRY_HEADERS[
+				'x-shotstack-origin'
+			],
+		],
+		proof: (text, key) => new RegExp(`'x-shotstack-origin':\\s*'${key}'`).test(text),
+	},
 	{
 		// n8n matches the codex to the node on this exact string, which joins
 		// the package name to the node type. A third place either can break.

@@ -106,10 +106,10 @@ Three kinds of name are frozen, and they break differently.
   workflow goes empty.
 - **A user reads it.** An output key. Rename one and every expression after
   that step resolves to nothing.
-- **Shotstack stores it.** The User-Agent product token, written to the render
-  log on every call. Rename it and this node's renders stop being countable,
-  including the ones already recorded, because nothing joins the old name to
-  the new one.
+- **Shotstack stores it.** The User-Agent product token and the origin value,
+  both written to the render log on every call. Rename either and this node's
+  renders stop being countable, including the ones already recorded, because
+  nothing joins the old name to the new one.
 
 Everything not named below is free to change. Display names, descriptions,
 placeholders, docs, scripts, tests and the internal layout included.
@@ -130,6 +130,7 @@ only eight.
 | `nodes/Shotstack/resources/render/postTemplateRender.ts` | the fields `templateId`, `mergeSource`, `mergeJson` and `merge`; the picker modes `list` and `id`; the collection key `mergeFields` and its fields `find` and `replace`; the values `fields` and `json` |
 | `nodes/Shotstack/resources/render/getRender.ts` | the fields `renderId`, `waitForCompletion`, `giveUpAfter`, `includeData` and `simple`; the Simplify keys `id`, `status`, `url`, `poster`, `thumbnail`, `duration`, `renderTime`, `error` and `data` |
 | `nodes/Shotstack/resources/asset/getAssetByRenderId.ts` | the fields `renderId`, `mainFileOnly` and `simple`; the Simplify keys `assetId`, `renderId`, `url`, `filename` and `status`. `assetId` departs from the spec on purpose: the spec calls it `id`, but only inside an asset object, and Simplify flattens that object away. Do not correct it back |
+| `nodes/Shotstack/telemetry.ts` | the origin value `n8n`. Shotstack keeps a fixed vocabulary of origins, and this node joins it beside the ones for the API, the CLI, the MCP server, Studio and the playground. Only this node can send it, so it is what separates this node from n8n traffic that is not this node |
 | `scripts/build-user-agent.mjs` | the product token `shotstack-n8n-node`. It writes the user agent file, which git ignores, so edit the generator and never the output. The version after the slash is meant to move |
 
 A check reads this table. It walks the built node and fails if a frozen name is

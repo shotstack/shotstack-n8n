@@ -1,7 +1,7 @@
 import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 import { renderDescription } from './resources/render';
 import { assetDescription } from './resources/asset';
-import { USER_AGENT } from './userAgent';
+import { TELEMETRY_HEADERS } from './telemetry';
 import { EDIT_BASE_URL } from './environment';
 import { getTemplates } from './listSearch/getTemplates';
 
@@ -36,7 +36,7 @@ export class Shotstack implements INodeType {
 			headers: {
 				Accept: 'application/json',
 				'Content-Type': 'application/json',
-				'User-Agent': USER_AGENT,
+				...TELEMETRY_HEADERS,
 			},
 		},
 		properties: [
