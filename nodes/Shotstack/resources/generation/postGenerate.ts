@@ -12,6 +12,7 @@ import type {
 import { TELEMETRY_HEADERS } from '../../telemetry';
 import { isRateLimited, pollGapMs, RATE_LIMIT_HELP } from '../../polling';
 import { jsonObjectParam } from '../jsonObject';
+import { isRenderId } from '../renderId';
 
 const showOnly = {
 	resource: ['generation'],
@@ -28,6 +29,7 @@ const showForBoth = {
 const POLL_GAP_MS = 5000;
 const MAX_GAP_MS = 20000;
 const REQUEST_TIMEOUT_MS = 30000;
+const MIN_MINUTES = 1;
 // The same ceiling as a render wait. n8n runs items one at a time, so a longer
 // one risks the 1 hour EXECUTIONS_TIMEOUT_MAX ending the whole run.
 const MAX_MINUTES = 10;
@@ -44,7 +46,16 @@ const buildGenerationBody: PreSendAction = async function (
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ) {
-	const prompt = String(this.getNodeParameter('prompt', '') ?? '').trim();
+	// Not String(): an expression or an agent can hand over an object, and
+	// String({}) is "[object Object]", which is not empty and bills a credit.
+	const typed = this.getNodeParameter('prompt', '');
+	if (typed !== undefined && typed !== null && typeof typed !== 'string') {
+		throw new NodeOperationError(this.getNode(), 'The Prompt field is not text', {
+			description: `A prompt is a sentence describing the asset. Got ${Array.isArray(typed) ? 'an array' : typeof typed}.`,
+			itemIndex: this.getItemIndex(),
+		});
+	}
+	const prompt = String(typed ?? '').trim();
 	if (!prompt) {
 		throw new NodeOperationError(this.getNode(), 'The Prompt field is empty', {
 			description: 'Describe the asset to generate. For a speech model this is the text spoken.',
@@ -73,8 +84,15 @@ const buildGenerationBody: PreSendAction = async function (
 	// Only a model that generates to a duration reads this; the rest ignore it.
 	// Zero means not set, because the API rejects a length that is not positive
 	// and every model has its own default.
-	const length = Number(this.getNodeParameter('length', 0));
-	if (Number.isFinite(length) && length > 0) body.length = length;
+	const asked = this.getNodeParameter('length', 0);
+	const length = Number(asked);
+	if (!Number.isFinite(length)) {
+		throw new NodeOperationError(this.getNode(), 'Clip Length is not a number', {
+			description: `It is a count of seconds, so "5" not "5 seconds". Got "${String(asked)}".`,
+			itemIndex: this.getItemIndex(),
+		});
+	}
+	if (length > 0) body.length = length;
 
 	requestOptions.body = body;
 	return requestOptions;
@@ -98,7 +116,7 @@ const waitForGeneration = async function (
 	const id = String(job.id ?? '');
 	let last = String(job.status ?? 'unknown');
 
-	const failed = (error: unknown): never => {
+	const failed: (error: unknown) => never = (error) => {
 		throw new NodeOperationError(this.getNode(), 'The generation failed', {
 			description:
 				typeof error === 'string' && error
@@ -112,10 +130,26 @@ const waitForGeneration = async function (
 	// A cache hit comes back done, with its URL already set.
 	if (last === 'done' || !id) return items;
 
+	// The ID goes straight into a path, and this one comes from a response body
+	// rather than from the field requireGenerationId already guards. A value
+	// carrying a slash would point every poll at a different endpoint.
+	if (!isRenderId(id)) {
+		throw new NodeOperationError(this.getNode(), 'Shotstack returned a generation ID we cannot use', {
+			description: `Expected an ID like 8a1f2c3d-4e5b-5a6c-9d7e-1f2a3b4c5d6e, got "${id}".`,
+			itemIndex: this.getItemIndex(),
+		});
+	}
+
+	// typeOptions bounds the UI spinner only, and an expression can resolve to
+	// anything. Clamp it: a negative would skip the loop and still report a wait.
+	const asked = Number(this.getNodeParameter('giveUpAfter', 5));
+	const minutes = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, Number.isFinite(asked) ? asked : 5));
+
 	const url = `${String(requestData.options.baseURL ?? '')}/generate/${id}`;
-	const deadline = Date.now() + MAX_MINUTES * 60000;
+	const deadline = Date.now() + minutes * 60000;
 	let response: { statusCode: number; body: IDataObject; headers: IDataObject } | undefined;
 	let throttled = false;
+	let lastCode = 0;
 
 	for (let attempt = 0; ; attempt++) {
 		// Wait first. The submit already answered with a status, so polling
@@ -134,33 +168,63 @@ const waitForGeneration = async function (
 				timeout: REQUEST_TIMEOUT_MS,
 				headers: { ...TELEMETRY_HEADERS },
 			})) as { statusCode: number; body: IDataObject; headers: IDataObject };
+			lastCode = response.statusCode;
 		} catch {
-			// A dropped connection is not an answer. Keep waiting.
+			// A dropped connection is not an answer. Keep waiting, and clear the
+			// last answer so the checks below do not read it twice.
+			response = undefined;
 		}
 
 		if (isRateLimited(response)) throttled = true;
 
-		if (response?.statusCode === 200) {
+		// Neither answer turns into an asset by waiting, so stop on it rather than
+		// run out the clock and blame the wait.
+		if (response?.statusCode === 401 || response?.statusCode === 403) {
+			throw new NodeOperationError(this.getNode(), 'Shotstack refused the API key', {
+				description:
+					'It accepted the key for the submit, then refused it while waiting. Check that the key is still active.',
+				itemIndex: this.getItemIndex(),
+			});
+		}
+		// Not on the first poll. The job is seconds old, and a gateway or a
+		// read-after-write lag can answer 404 once.
+		if (attempt > 0 && response?.statusCode === 404) {
+			throw new NodeOperationError(this.getNode(), 'Shotstack has no generation with that ID', {
+				description: `It accepted the generation as ${id}, then reported no such job. Run the step again, and send this ID to Shotstack support if it repeats.`,
+				itemIndex: this.getItemIndex(),
+			});
+		}
+
+		// 202 is the job still processing and 200 is it finished, and both carry
+		// the job. Reading only one of them leaves the status at whatever the
+		// submit said, so a job that spent nine minutes processing still reports
+		// the word it was queued under.
+		if (response?.statusCode === 200 || response?.statusCode === 202) {
 			// The generation endpoints answer with the job itself, not the
 			// { success, message, response } envelope the rest of the Edit API
 			// wraps its answers in.
 			const body = (response.body ?? {}) as IDataObject;
 			last = String(body.status ?? last);
 			if (last === 'failed') failed(body.error);
-			if (last === 'done') return [{ json: body, pairedItem: { item: this.getItemIndex() } }];
+			// Only a 200 is final. A 202 saying done is the job still being
+			// written, and its url may not be there yet.
+			if (response.statusCode === 200 && last === 'done') {
+				return [{ json: body, pairedItem: { item: this.getItemIndex() } }];
+			}
 		}
 	}
 
-	throw new NodeOperationError(
-		this.getNode(),
-		`The asset is still ${last} after ${MAX_MINUTES} minutes`,
-		{
-			description: throttled
-				? RATE_LIMIT_HELP
-				: 'Generation keeps going after this runs out. Turn off Wait for the Asset, keep the ID it returns, and read the result later with Get Generation Status.',
-			itemIndex: this.getItemIndex(),
-		},
-	);
+	// Name what happened. "Still queued" on a run where every poll was a 500
+	// sends the user to raise a timeout that was never the problem.
+	const reached = lastCode
+		? `The asset is still ${last} after ${minutes} minutes`
+		: `The status check never completed, ${minutes} minutes after the asset was submitted`;
+	throw new NodeOperationError(this.getNode(), reached, {
+		description: throttled
+			? RATE_LIMIT_HELP
+			: `Shotstack last answered ${lastCode || 'nothing'}. Generation keeps going after this runs out, so turn off Wait for the Asset, keep the ID it returns, and read the result later with Get Generation Status.`,
+		itemIndex: this.getItemIndex(),
+	});
 };
 
 export const postGenerateDescription: INodeProperties[] = [
@@ -239,5 +303,15 @@ export const postGenerateDescription: INodeProperties[] = [
 			send: { paginate: true },
 			operations: { pagination: waitForGeneration },
 		},
+	},
+	{
+		displayName: 'Give Up After (Minutes)',
+		name: 'giveUpAfter',
+		type: 'number',
+		default: 5,
+		typeOptions: { minValue: MIN_MINUTES, maxValue: MAX_MINUTES },
+		displayOptions: { show: { ...showOnly, waitForAsset: [true] } },
+		description:
+			'How long to keep checking. n8n runs items one at a time, so six waiting items at the maximum reach its one hour execution limit and the whole run is lost. The generation keeps going after this runs out, and Shotstack still bills it',
 	},
 ];

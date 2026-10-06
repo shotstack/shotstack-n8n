@@ -23,6 +23,9 @@ const paginate = shownFor('waitForAsset', 'postGenerate').routing.operations.pag
 
 const node_ = () => ({ name: 'Shotstack' });
 
+// A real job id: the wait loop puts it in a path, so it checks the shape.
+const JOB = '8a1f2c3d-4e5b-5a6c-9d7e-1f2a3b4c5d6e';
+
 const send = async (params) =>
 	await preSend.call(
 		{
@@ -50,14 +53,41 @@ const neverPolls = {
 	},
 };
 
-const wait = async (job, waitForAsset = true) =>
+// Answers each poll with the next status code, then with a finished job, so a
+// loop that ignores an answer ends here instead of running out the clock.
+const answering = (...codes) => {
+	let calls = 0;
+	return {
+		calls: () => calls,
+		httpRequestWithAuthentication: async () => {
+			const statusCode = codes[calls++];
+			if (statusCode === 'drop') throw new Error('socket hang up');
+			return statusCode
+				? { statusCode, body: {}, headers: {} }
+				: { statusCode: 200, body: { id: JOB, status: 'done' }, headers: {} };
+		},
+	};
+};
+
+// n8n's sleep is a setTimeout, so this makes every poll gap instant. The clock
+// has to move with it: the loop's deadline is wall clock, so instant sleeps
+// alone would spin the loop for the full five minutes instead of ending it.
+let clock = Date.now();
+globalThis.setTimeout = (resolve, ms = 0) => {
+	clock += ms;
+	resolve();
+};
+Date.now = () => clock;
+
+const wait = async (job, waitForAsset = true, helpers = neverPolls) =>
 	await paginate.call(
 		{
 			makeRoutingRequest: async () => [{ json: job }],
-			getNodeParameter: (name, fallback) => (name === 'waitForAsset' ? waitForAsset : fallback),
+			getNodeParameter: (name, fallback) =>
+				name === 'waitForAsset' ? waitForAsset : name === 'giveUpAfter' ? 5 : fallback,
 			getNode: node_,
 			getItemIndex: () => 0,
-			helpers: neverPolls,
+			helpers,
 		},
 		{ options: { baseURL: 'https://api.shotstack.io/edit/stage', url: '/generate' } },
 	);
@@ -110,20 +140,101 @@ await check('options that parse to an array are refused', async () => {
 });
 
 await check('a cached generation comes back done, with no poll at all', async () => {
-	const items = await wait({ id: 'abc', status: 'done', url: 'https://cdn/x.png' });
+	const items = await wait({ id: JOB, status: 'done', url: 'https://cdn/x.png' });
 	assert.equal(items[0].json.url, 'https://cdn/x.png');
 });
 
 await check('a generation that failed on submit stops the step', async () => {
 	await assert.rejects(
-		async () => await wait({ id: 'abc', status: 'failed', error: 'the model refused it' }),
+		async () => await wait({ id: JOB, status: 'failed', error: 'the model refused it' }),
 		/generation failed/,
 	);
 });
 
 await check('waiting turned off hands back the job without polling', async () => {
-	const items = await wait({ id: 'abc', status: 'queued' }, false);
+	const items = await wait({ id: JOB, status: 'queued' }, false);
 	assert.equal(items[0].json.status, 'queued');
+});
+
+await check('a refused key stops the wait on the first poll', async () => {
+	const helpers = answering(401);
+	await assert.rejects(
+		async () => await wait({ id: JOB, status: 'queued' }, true, helpers),
+		/refused the API key/,
+	);
+	assert.equal(helpers.calls(), 1);
+});
+
+await check('a 404 stops the wait, but not on the first poll or after a dropped one', async () => {
+	const helpers = answering(404, 'drop', 404);
+	await assert.rejects(
+		async () => await wait({ id: JOB, status: 'queued' }, true, helpers),
+		/no generation with that ID/,
+	);
+	assert.equal(helpers.calls(), 3);
+});
+
+await check('a 202 keeps the status moving, so the timeout names the real one', async () => {
+	// The API answers 202 while the job is processing. A loop that only reads
+	// 200 reports whatever the submit said, however long it really ran.
+	const helpers = {
+		httpRequestWithAuthentication: async () => ({
+			statusCode: 202,
+			body: { id: JOB, status: 'processing' },
+			headers: {},
+		}),
+	};
+	await assert.rejects(
+		async () => await wait({ id: JOB, status: 'queued' }, true, helpers),
+		/still processing/,
+	);
+});
+
+await check('a 202 saying done is not taken as final', async () => {
+	// The job is still being written at that point, so its url may be missing.
+	let calls = 0;
+	const helpers = {
+		httpRequestWithAuthentication: async () => {
+			calls += 1;
+			return calls === 1
+				? { statusCode: 202, body: { id: JOB, status: 'done' }, headers: {} }
+				: {
+						statusCode: 200,
+						body: { id: JOB, status: 'done', url: 'https://cdn/x.png' },
+						headers: {},
+					};
+		},
+	};
+	const items = await wait({ id: JOB, status: 'queued' }, true, helpers);
+	assert.equal(items[0].json.url, 'https://cdn/x.png');
+	assert.equal(calls, 2);
+});
+
+await check('an id the API sends back that is not an id never reaches a URL', async () => {
+	await assert.rejects(
+		async () => await wait({ id: '../../render/abc', status: 'queued' }),
+		/generation ID we cannot use/,
+	);
+});
+
+await check('a prompt that is not text never bills a generation', async () => {
+	const error = await rejected({ prompt: { brief: 'a cat' } });
+	assert.ok(error, 'the generation was sent anyway');
+	assert.match(error.message, /not text/);
+});
+
+await check('a length that is not a number is named, not silently dropped', async () => {
+	const error = await rejected({ prompt: 'a cat', length: '5 seconds' });
+	assert.ok(error, 'the generation was sent anyway');
+	assert.match(error.message, /not a number/);
+});
+
+await check('the wait cannot be set past the point where six items eat the n8n hour', () => {
+	const field = properties.find(
+		(x) => x.name === 'giveUpAfter' && x.displayOptions?.show?.waitForAsset,
+	);
+	assert.ok(field, 'Generate Asset has no Give Up After');
+	assert.ok(field.typeOptions.maxValue * 6 <= 60, 'six waiting items can exceed the n8n hour');
 });
 
 console.log(`\n${passed} passing`);

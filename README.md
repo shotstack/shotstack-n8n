@@ -160,6 +160,7 @@ whole edit. Use the URL it returns as an asset in a later render.
 | **Model Options** | Optional JSON of settings for the chosen model. **List Generation Models** returns what each one accepts. |
 | **Clip Length (Seconds)** | Only read by models that generate to a duration. 0 uses the model default. |
 | **Wait for the Asset** | On by default, so the step returns the finished URL rather than a job ID. Turn it off for a long video. |
+| **Give Up After (Minutes)** | Only shown when waiting. 5 by default, 10 at most. n8n runs items one at a time, so six waiting items at the maximum reach its one hour limit. Giving up does not stop the generation, and Shotstack still bills it. |
 
 Shotstack bills generation in credits per asset, in Sandbox and in Production.
 Generating the same asset twice returns the first result and is not billed
