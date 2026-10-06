@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.2.0 — 2026-10-06
+
+Adds AI generation of images, video and audio.
+
+### Added
+
+- **Generation** resource, for one AI image, video or audio file without
+  rendering a whole edit. Shotstack bills generation in credits per asset, in
+  Sandbox and in Production.
+- **Generation → Generate Asset** — `POST /generate` with an asset type, a
+  prompt, and optionally a model and its options. **Wait for the Asset** is on
+  by default, so the step returns the finished URL rather than a job ID.
+  **Give Up After** defaults to 5 minutes and allows 10: n8n runs items one at a
+  time, so six waiting items at the maximum reach its one-hour limit.
+  Generating the same asset twice returns the first result and is not billed
+  again.
+- **Generation → Quote Generation** — `POST /generate/quote`, the credits a
+  generation would cost. It takes the same fields, starts no job and spends
+  nothing.
+- **Generation → Get Generation Status** — `GET /generate/{id}`, for a
+  generation submitted without waiting.
+- **Generation → List Generation Models** — `GET /models`, one item per model
+  the account can use, each with the options it accepts. Point an AI agent here
+  before it generates anything.
+- The Model picker lists the account's models for the chosen asset type, so a
+  newly launched model needs no release of this node.
+- The wait stops as soon as waiting cannot help: a refused API key, a
+  generation Shotstack reports it does not have, or a failed generation. A
+  prompt that is not text, a Clip Length that is not a number, and Model
+  Options that are not a JSON object are refused before anything is billed.
+
+### Changed
+
+- **Render → Render Asset** refuses an Edit of `{}` as empty before it reaches
+  Shotstack, and names an Edit that is not a JSON object as such.
+
 ## 0.1.0 — 2026-08-24
 
 First version. Published as `@shotstack/n8n-nodes-shotstack`.
