@@ -1,11 +1,11 @@
 import { NodeOperationError } from 'n8n-workflow';
 import type {
-	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
 	INodeProperties,
 	PreSendAction,
 } from 'n8n-workflow';
+import { jsonObjectParam } from '../jsonObject';
 
 const showOnly = {
 	resource: ['render'],
@@ -27,34 +27,15 @@ const buildRenderBody: PreSendAction = async function (
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ) {
-	const raw = this.getNodeParameter('edit', '') as string | IDataObject;
-
-	let edit: IDataObject;
-	if (typeof raw === 'string') {
-		const text = raw.trim();
-		if (!text) {
-			throw new NodeOperationError(this.getNode(), 'The Edit field is empty', {
-				description: 'Paste a Shotstack edit, or use Render Template if you have one saved.',
-				itemIndex: this.getItemIndex(),
-			});
-		}
-		try {
-			edit = JSON.parse(text) as IDataObject;
-		} catch (error) {
-			throw new NodeOperationError(this.getNode(), 'The Edit field is not valid JSON', {
-				description: (error as Error).message,
-				itemIndex: this.getItemIndex(),
-			});
-		}
-	} else {
-		edit = (raw ?? {}) as IDataObject;
-	}
-
-	// A bare string, number or array parses cleanly and then spreads into a body
-	// of numbered keys, which Shotstack rejects with nothing the user can act on.
-	if (edit === null || typeof edit !== 'object' || Array.isArray(edit)) {
-		throw new NodeOperationError(this.getNode(), 'The Edit field is not a Shotstack edit', {
-			description: `An edit is a JSON object with a timeline and an output. Got ${Array.isArray(edit) ? 'an array' : typeof edit}.`,
+	const edit = jsonObjectParam.call(
+		this,
+		'edit',
+		'The Edit field',
+		'An edit is a JSON object with a timeline and an output.',
+	);
+	if (!edit) {
+		throw new NodeOperationError(this.getNode(), 'The Edit field is empty', {
+			description: 'Paste a Shotstack edit, or use Render Template if you have one saved.',
 			itemIndex: this.getItemIndex(),
 		});
 	}
