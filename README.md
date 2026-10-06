@@ -71,6 +71,10 @@ and the API reference read the same way.
 | **Render → Render Template** | `POST /templates/render` · `postTemplateRender` |
 | **Render → Get Render Status** | `GET /render/{id}` · `getRender` |
 | **Asset → Get Asset by Render ID** | `GET /assets/render/{id}` · `getAssetByRenderId` (Serve API) |
+| **Generation → Generate Asset** | `POST /generate` · `postGenerate` |
+| **Generation → Get Generation Status** | `GET /generate/{id}` · `getGenerate` |
+| **Generation → List Generation Models** | `GET /models` · `getModels` |
+| **Generation → Quote Generation** | `POST /generate/quote` · `postGenerateQuote` |
 
 Every operation has an entry in the spec. The node adds none of its own.
 
@@ -142,6 +146,42 @@ then publishes it, as two steps. The Serve API answers 404 until the second step
 completes. The publish time varies, so a fixed Wait node does not fit. This
 operation waits for you, up to two minutes, and names the cause if the file does
 not appear. Do not add a Wait node after the render finishes.
+
+### Generation → Generate Asset
+
+Generates one image, video or audio file from a prompt, without rendering a
+whole edit. Use the URL it returns as an asset in a later render.
+
+| Field | Notes |
+| --- | --- |
+| **Asset Type** | Image, video or audio. It decides which models the picker offers. |
+| **Prompt** | What to generate. For a text-to-speech model this is the text that gets spoken. Empty by default, so an agent that omits it spends nothing. |
+| **Model Name or ID** | Pick one from the list, or leave it on the default for the asset type. The list comes from your account, so a newly launched model needs no release of this node. |
+| **Model Options** | Optional JSON of settings for the chosen model. **List Generation Models** returns what each one accepts. |
+| **Clip Length (Seconds)** | Only read by models that generate to a duration. 0 uses the model default. |
+| **Wait for the Asset** | On by default, so the step returns the finished URL rather than a job ID. Turn it off for a long video. |
+| **Give Up After (Minutes)** | Only shown when waiting. 5 by default, 10 at most. n8n runs items one at a time, so six waiting items at the maximum reach its one hour limit. Giving up does not stop the generation, and Shotstack still bills it. |
+
+Shotstack bills generation in credits per asset, in Sandbox and in Production.
+Generating the same asset twice returns the first result and is not billed
+again, so a retried workflow costs nothing extra.
+
+### Generation → Quote Generation
+
+Estimates the credits a generation would cost. Takes the same fields as
+**Generate Asset**, starts no job and spends nothing.
+
+### Generation → Get Generation Status
+
+| Field | Notes |
+| --- | --- |
+| **Generation ID** | The id returned by **Generate Asset**. The default reads it from the previous step. |
+
+### Generation → List Generation Models
+
+Returns one item per model this account can generate with, each carrying the
+JSON Schema of the options it accepts. Point an AI agent here before it
+generates anything, so it picks a model that exists rather than one it recalls.
 
 ### Output shape
 
