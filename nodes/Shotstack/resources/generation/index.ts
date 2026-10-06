@@ -2,8 +2,8 @@ import type { INodeProperties } from 'n8n-workflow';
 import { postGenerateDescription } from './postGenerate';
 import { getGenerateDescription } from './getGenerate';
 
-const showOnlyForGenerate = {
-	resource: ['generate'],
+const showOnlyForGeneration = {
+	resource: ['generation'],
 };
 
 // Operation names and values come from Shotstack's OpenAPI spec: the display
@@ -13,13 +13,13 @@ const showOnlyForGenerate = {
 // the render operations none of them unwraps anything. List Generation Models
 // is the one exception: its answer is an object holding the array, and n8n
 // should hand back one item per model.
-export const generateDescription: INodeProperties[] = [
+export const generationDescription: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		displayOptions: { show: showOnlyForGenerate },
+		displayOptions: { show: showOnlyForGeneration },
 		options: [
 			{
 				name: 'Generate Asset',

@@ -13,14 +13,14 @@ import { TELEMETRY_HEADERS } from '../../telemetry';
 import { isRateLimited, pollGapMs, RATE_LIMIT_HELP } from '../../polling';
 
 const showOnly = {
-	resource: ['generate'],
+	resource: ['generation'],
 	operation: ['postGenerate'],
 };
 
 // Quote takes the same body as Generate Asset, so one set of fields builds both
 // and only the route differs. A quote spends nothing, which is the point of it.
 const showForBoth = {
-	resource: ['generate'],
+	resource: ['generation'],
 	operation: ['postGenerate', 'postGenerateQuote'],
 };
 

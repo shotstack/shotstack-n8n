@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import { requireGenerationId } from '../renderId';
 
 const showOnly = {
-	resource: ['generate'],
+	resource: ['generation'],
 	operation: ['getGenerate'],
 };
 

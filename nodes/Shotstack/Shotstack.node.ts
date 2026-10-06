@@ -1,7 +1,7 @@
 import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 import { renderDescription } from './resources/render';
 import { assetDescription } from './resources/asset';
-import { generateDescription } from './resources/generate';
+import { generationDescription } from './resources/generation';
 import { TELEMETRY_HEADERS } from './telemetry';
 import { EDIT_BASE_URL } from './environment';
 import { getTemplates } from './listSearch/getTemplates';
@@ -57,7 +57,7 @@ export class Shotstack implements INodeType {
 					},
 					{
 						name: 'Generation',
-						value: 'generate',
+						value: 'generation',
 					},
 					{
 						name: 'Render',
@@ -68,7 +68,7 @@ export class Shotstack implements INodeType {
 			},
 			...renderDescription,
 			...assetDescription,
-			...generateDescription,
+			...generationDescription,
 		],
 	};
 
