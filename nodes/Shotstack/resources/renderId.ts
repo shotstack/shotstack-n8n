@@ -24,3 +24,18 @@ export const requireRenderId: PreSendAction = async function (
 	}
 	return requestOptions;
 };
+
+/** The same guard for a generation job ID, which also goes straight into a path. */
+export const requireGenerationId: PreSendAction = async function (
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+) {
+	const value = String(this.getNodeParameter('generationId', '') ?? '').trim();
+	if (!isRenderId(value)) {
+		throw new NodeOperationError(this.getNode(), 'That is not a Shotstack generation ID', {
+			description: `A generation ID looks like 8a1f2c3d-4e5b-5a6c-9d7e-1f2a3b4c5d6e. Got "${value}". Generate Asset returns it as "id".`,
+			itemIndex: this.getItemIndex(),
+		});
+	}
+	return requestOptions;
+};
