@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { TELEMETRY_HEADERS } from '../../telemetry';
 import { isRateLimited, pollGapMs, RATE_LIMIT_HELP } from '../../polling';
+import { jsonObjectParam } from '../jsonObject';
 
 const showOnly = {
 	resource: ['generation'],
@@ -59,33 +60,13 @@ const buildGenerationBody: PreSendAction = async function (
 	const model = String(this.getNodeParameter('model', '') ?? '').trim();
 	if (model) asset.model = model;
 
-	const raw = this.getNodeParameter('modelOptions', '') as string | IDataObject;
-	const text = typeof raw === 'string' ? raw.trim() : '';
-	if (typeof raw === 'string' ? text !== '' && text !== '{}' : Boolean(raw)) {
-		let options: IDataObject;
-		if (typeof raw === 'string') {
-			try {
-				options = JSON.parse(text) as IDataObject;
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), 'Model Options is not valid JSON', {
-					description: (error as Error).message,
-					itemIndex: this.getItemIndex(),
-				});
-			}
-		} else {
-			options = raw;
-		}
-		// A bare string or array parses cleanly and then spreads into numbered
-		// keys, which the API rejects with nothing the user can act on.
-		if (options === null || typeof options !== 'object' || Array.isArray(options)) {
-			throw new NodeOperationError(this.getNode(), 'Model Options is not a JSON object', {
-				description:
-					'It holds the settings for the chosen model, such as {"aspectRatio": "16:9"}. List Generation Models returns the options each model accepts.',
-				itemIndex: this.getItemIndex(),
-			});
-		}
-		asset.options = options;
-	}
+	const options = jsonObjectParam.call(
+		this,
+		'modelOptions',
+		'Model Options',
+		'It holds the settings for the chosen model, such as {"aspectRatio": "16:9"}. List Generation Models returns the options each model accepts.',
+	);
+	if (options) asset.options = options;
 
 	const body: IDataObject = { asset };
 
@@ -94,14 +75,6 @@ const buildGenerationBody: PreSendAction = async function (
 	// and every model has its own default.
 	const length = Number(this.getNodeParameter('length', 0));
 	if (Number.isFinite(length) && length > 0) body.length = length;
-
-	// Without a key, identical assets share one cached result, so a retried
-	// workflow is not billed twice. With one, a loop can ask for a second take
-	// of the same prompt.
-	const idempotencyKey = String(this.getNodeParameter('idempotencyKey', '') ?? '').trim();
-	if (idempotencyKey) {
-		requestOptions.headers = { ...requestOptions.headers, 'Idempotency-Key': idempotencyKey };
-	}
 
 	requestOptions.body = body;
 	return requestOptions;
@@ -254,15 +227,6 @@ export const postGenerateDescription: INodeProperties[] = [
 		displayOptions: { show: showForBoth },
 		description:
 			'The length of the clip this asset has to fill. A model that generates to a duration uses it instead of its own duration option, and the rest ignore it. Leave at 0 for the model default.',
-	},
-	{
-		displayName: 'Idempotency Key',
-		name: 'idempotencyKey',
-		type: 'string',
-		default: '',
-		displayOptions: { show: showOnly },
-		description:
-			'Optional. Without one, generating the same asset twice returns the first result and is not billed again. Set a different key each time to get a fresh take on the same prompt.',
 	},
 	{
 		displayName: 'Wait for the Asset',

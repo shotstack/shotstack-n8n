@@ -109,12 +109,6 @@ await check('options that parse to an array are refused', async () => {
 	assert.match(error.message, /not a JSON object/);
 });
 
-await check('an idempotency key rides along without losing the telemetry headers', async () => {
-	const { headers } = await send({ prompt: 'a cat', idempotencyKey: 'take-2' });
-	assert.equal(headers['Idempotency-Key'], 'take-2');
-	assert.equal(headers['x-shotstack-origin'], 'n8n');
-});
-
 await check('a cached generation comes back done, with no poll at all', async () => {
 	const items = await wait({ id: 'abc', status: 'done', url: 'https://cdn/x.png' });
 	assert.equal(items[0].json.url, 'https://cdn/x.png');

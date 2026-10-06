@@ -159,7 +159,6 @@ whole edit. Use the URL it returns as an asset in a later render.
 | **Model Name or ID** | Pick one from the list, or leave it on the default for the asset type. The list comes from your account, so a newly launched model needs no release of this node. |
 | **Model Options** | Optional JSON of settings for the chosen model. **List Generation Models** returns what each one accepts. |
 | **Clip Length (Seconds)** | Only read by models that generate to a duration. 0 uses the model default. |
-| **Idempotency Key** | Optional. Set a different key to get a fresh take on a prompt generated before. |
 | **Wait for the Asset** | On by default, so the step returns the finished URL rather than a job ID. Turn it off for a long video. |
 
 Shotstack bills generation in credits per asset, in Sandbox and in Production.
