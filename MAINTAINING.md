@@ -122,14 +122,17 @@ only eight.
 | --- | --- |
 | `package.json` | the package name `@shotstack/n8n-nodes-shotstack`, and the built paths `dist/nodes/Shotstack/Shotstack.node.js` and `dist/credentials/ShotstackApi.credentials.js` |
 | `credentials/ShotstackApi.credentials.ts` | the credential type `shotstackApi`; the fields `environment` and `apiKey`; the values `sandbox` and `production` |
-| `nodes/Shotstack/Shotstack.node.ts` | the node type `shotstack`; the behaviour of version 1, which n8n stamps on every saved node as typeVersion; the field `resource`; the values `render` and `asset` |
+| `nodes/Shotstack/Shotstack.node.ts` | the node type `shotstack`; the behaviour of version 1, which n8n stamps on every saved node as typeVersion; the field `resource`; the values `render`, `asset` and `generation` |
 | `nodes/Shotstack/resources/render/index.ts` | the field `operation`; the values `postRender`, `postTemplateRender` and `getRender` |
 | `nodes/Shotstack/resources/asset/index.ts` | the field `operation`; the value `getAssetByRenderId` |
+| `nodes/Shotstack/resources/generation/index.ts` | the field `operation`; the values `postGenerate`, `getGenerate`, `getModels` and `postGenerateQuote` |
 | `nodes/Shotstack/Shotstack.node.json` | the codex key `@shotstack/n8n-nodes-shotstack.shotstack`. n8n matches the codex to the node on that exact string, which joins the package name to the node type, so it is a third place either can break |
 | `nodes/Shotstack/resources/render/postRender.ts` | the fields `edit` and `callback` |
 | `nodes/Shotstack/resources/render/postTemplateRender.ts` | the fields `templateId`, `mergeSource`, `mergeJson` and `merge`; the picker modes `list` and `id`; the collection key `mergeFields` and its fields `find` and `replace`; the values `fields` and `json` |
 | `nodes/Shotstack/resources/render/getRender.ts` | the fields `renderId`, `waitForCompletion`, `giveUpAfter`, `includeData` and `simple`; the Simplify keys `id`, `status`, `url`, `poster`, `thumbnail`, `duration`, `renderTime`, `error` and `data` |
 | `nodes/Shotstack/resources/asset/getAssetByRenderId.ts` | the fields `renderId`, `mainFileOnly` and `simple`; the Simplify keys `assetId`, `renderId`, `url`, `filename` and `status`. `assetId` departs from the spec on purpose: the spec calls it `id`, but only inside an asset object, and Simplify flattens that object away. Do not correct it back |
+| `nodes/Shotstack/resources/generation/postGenerate.ts` | the fields `assetType`, `prompt`, `model`, `modelOptions`, `length`, `waitForAsset` and `giveUpAfter`; the asset type values `image`, `video` and `audio`. These build the request body in code, so a rename here changes what a saved workflow sends, not just what it shows |
+| `nodes/Shotstack/resources/generation/getGenerate.ts` | the field `generationId` |
 | `nodes/Shotstack/telemetry.ts` | the origin value `n8n`. Shotstack keeps a fixed vocabulary of origins, and this node joins it beside the ones for the API, the CLI, the MCP server, Studio and the playground. Only this node can send it, so it is what separates this node from n8n traffic that is not this node |
 | `scripts/build-user-agent.mjs` | the product token `shotstack-n8n-node`. It writes the user agent file, which git ignores, so edit the generator and never the output. The version after the slash is meant to move |
 
