@@ -139,6 +139,16 @@ check('the codex file names the node the way n8n registers it', () => {
 	}
 });
 
+check('the description carries the search words', () => {
+	// n8n's catalog of verified nodes reads them from the description, and
+	// stored an empty record while they lived only in the codex file.
+	for (const relative of manifest.n8n.nodes) {
+		const { instance } = load(relative);
+		const codex = require(resolve(root, relative.replace(/\.js$/, '.json')));
+		assert.deepEqual(instance.description.codex?.alias, codex.alias);
+	}
+});
+
 check('every operation is reachable from a resource', () => {
 	const { instance } = load(manifest.n8n.nodes[0]);
 	const properties = instance.description.properties;
