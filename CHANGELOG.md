@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 — 2026-10-07
+
+Adds search words, so n8n's Nodes panel finds Shotstack when people search for
+what it makes, such as "text to video", "text to speech", "AI image", "shorts",
+"subtitles" or "FFmpeg".
+
 ## 0.2.0 — 2026-10-06
 
 Adds AI generation of images, video and audio.

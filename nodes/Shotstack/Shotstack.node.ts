@@ -6,6 +6,7 @@ import { TELEMETRY_HEADERS } from './telemetry';
 import { EDIT_BASE_URL } from './environment';
 import { getTemplates } from './listSearch/getTemplates';
 import { getModels } from './loadOptions/getModels';
+import codexFile from './Shotstack.node.json';
 
 export class Shotstack implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,6 +22,13 @@ export class Shotstack implements INodeType {
 		// the reader which of the three a bare id belongs to.
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Render video and images from JSON with the Shotstack API',
+		// n8n's catalog of verified nodes, which the Nodes panel searches, reads
+		// categories and search words from the description, not the codex file.
+		codex: {
+			categories: codexFile.categories,
+			alias: codexFile.alias,
+			resources: codexFile.resources,
+		},
 		defaults: {
 			name: 'Shotstack',
 		},
