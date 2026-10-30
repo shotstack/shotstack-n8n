@@ -69,7 +69,10 @@ export class ShotstackApi implements ICredentialType {
 		// relative url like //evil.example.com/x is absolute to axios but not to
 		// /^https?:\/\//, so that test fell through to baseURL, saw Shotstack and
 		// attached the key to a request axios then sent to evil.example.com.
-		const url = String(requestOptions.url ?? '');
+		//
+		// n8n's HTTP Request node still goes through the legacy request helper,
+		// which names the address uri, so read that too or the key never goes.
+		const url = String(requestOptions.url ?? (requestOptions as { uri?: string }).uri ?? '');
 		const target = /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url)
 			? url
 			: String(requestOptions.baseURL ?? '');

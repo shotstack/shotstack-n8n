@@ -40,6 +40,9 @@ const cases = [
 		false,
 	],
 	['protocol relative url with no baseURL', { baseURL: '', url: '//evil.example.com/x.mp4' }, false],
+	// n8n's HTTP Request node, with this credential picked, passes uri, not url.
+	['HTTP Request node to the Ingest API', { uri: 'https://api.shotstack.io/ingest/v1/sources' }, true],
+	['HTTP Request node to a third party', { uri: 'https://evil.example.com/collect.mp4' }, false],
 	// The same rule must not stop the key reaching a genuine relative call.
 	['a relative path on the Edit API', { baseURL: 'https://api.shotstack.io/edit/stage', url: '/render' }, true],
 ];
