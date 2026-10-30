@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 — 2026-10-30
+
+Fixes the Shotstack credential in n8n's HTTP Request node. With the credential
+picked there, calls to api.shotstack.io (such as the Ingest API) went out without
+the API key and failed with "Missing API key". The key still only goes to
+api.shotstack.io.
+
 ## 0.2.1 — 2026-10-07
 
 Adds search words, so n8n's Nodes panel finds Shotstack when people search for
