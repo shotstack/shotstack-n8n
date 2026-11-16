@@ -103,8 +103,8 @@ Renders a template saved in your Shotstack account, filling in its placeholders.
 | Field | Notes |
 | --- | --- |
 | **Template** | Pick one from the list, or paste an ID. Templates are made in [Shotstack Studio](https://shotstack.io/studio/). |
-| **Merge Fields Source** | **Fields** for find/replace pairs, or **JSON** to supply the whole list at once. |
-| **Merge Fields** | The find value is the placeholder name without braces. See [Merging data](https://shotstack.io/docs/guide/architecting-an-application/merging-data/). |
+| **Merge Fields Source** | **From Template**, the default for new steps, loads the chosen template's merge fields, one input each. **Fields** for find/replace pairs, or **JSON** to supply the whole list at once. Steps saved before 0.3.0 keep **Fields** as their default. |
+| **Merge Fields** | With **From Template**, a field left empty keeps the template's own value, and so does a field added to the template later. Each value takes the type of the template's own value, so a `5` from a sheet fills a number placeholder as a number. **Map Automatically** fills fields from input columns with the same names. With **Fields**, the find value is the placeholder name without braces. See [Merging data](https://shotstack.io/docs/guide/architecting-an-application/merging-data/). |
 
 Returns the render `id`. This operation takes no Callback URL: the Edit API
 accepts one on `POST /templates/render` and does not act on it. Use

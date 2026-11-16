@@ -6,6 +6,7 @@ import { TELEMETRY_HEADERS } from './telemetry';
 import { EDIT_BASE_URL } from './environment';
 import { getTemplates } from './listSearch/getTemplates';
 import { getModels } from './loadOptions/getModels';
+import { getTemplateFields } from './resourceMapping/getTemplateFields';
 import codexFile from './Shotstack.node.json';
 
 export class Shotstack implements INodeType {
@@ -17,7 +18,9 @@ export class Shotstack implements INodeType {
 			dark: 'file:../../icons/shotstack.dark.svg',
 		},
 		group: ['transform'],
-		version: 1,
+		// Version 2 starts Render Template on the template's own merge fields. Saved
+		// workflows keep version 1, which defaults to Fields.
+		version: [1, 2],
 		// The operation values are OpenAPI operationIds, so the resource tells
 		// the reader which of the three a bare id belongs to.
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -86,6 +89,9 @@ export class Shotstack implements INodeType {
 		},
 		loadOptions: {
 			getModels,
+		},
+		resourceMapping: {
+			getTemplateFields,
 		},
 	};
 }

@@ -122,13 +122,13 @@ only eight.
 | --- | --- |
 | `package.json` | the package name `@shotstack/n8n-nodes-shotstack`, and the built paths `dist/nodes/Shotstack/Shotstack.node.js` and `dist/credentials/ShotstackApi.credentials.js` |
 | `credentials/ShotstackApi.credentials.ts` | the credential type `shotstackApi`; the fields `environment` and `apiKey`; the values `sandbox` and `production` |
-| `nodes/Shotstack/Shotstack.node.ts` | the node type `shotstack`; the behaviour of version 1, which n8n stamps on every saved node as typeVersion; the field `resource`; the values `render`, `asset` and `generation` |
+| `nodes/Shotstack/Shotstack.node.ts` | the node type `shotstack`; the behaviour of versions 1 and 2, which n8n stamps on every saved node as typeVersion; the field `resource`; the values `render`, `asset` and `generation` |
 | `nodes/Shotstack/resources/render/index.ts` | the field `operation`; the values `postRender`, `postTemplateRender` and `getRender` |
 | `nodes/Shotstack/resources/asset/index.ts` | the field `operation`; the value `getAssetByRenderId` |
 | `nodes/Shotstack/resources/generation/index.ts` | the field `operation`; the values `postGenerate`, `getGenerate`, `getModels` and `postGenerateQuote` |
 | `nodes/Shotstack/Shotstack.node.json` | the codex key `@shotstack/n8n-nodes-shotstack.shotstack`. n8n matches the codex to the node on that exact string, which joins the package name to the node type, so it is a third place either can break |
 | `nodes/Shotstack/resources/render/postRender.ts` | the fields `edit` and `callback` |
-| `nodes/Shotstack/resources/render/postTemplateRender.ts` | the fields `templateId`, `mergeSource`, `mergeJson` and `merge`; the picker modes `list` and `id`; the collection key `mergeFields` and its fields `find` and `replace`; the values `fields` and `json` |
+| `nodes/Shotstack/resources/render/postTemplateRender.ts` | the fields `templateId`, `mergeSource`, `mergeJson`, `merge` and `templateFields`; the picker modes `list` and `id`; the collection key `mergeFields` and its fields `find` and `replace`; the values `fields`, `json` and `template` |
 | `nodes/Shotstack/resources/render/getRender.ts` | the fields `renderId`, `waitForCompletion`, `giveUpAfter`, `includeData` and `simple`; the Simplify keys `id`, `status`, `url`, `poster`, `thumbnail`, `duration`, `renderTime`, `error` and `data` |
 | `nodes/Shotstack/resources/asset/getAssetByRenderId.ts` | the fields `renderId`, `mainFileOnly` and `simple`; the Simplify keys `assetId`, `renderId`, `url`, `filename` and `status`. `assetId` departs from the spec on purpose: the spec calls it `id`, but only inside an asset object, and Simplify flattens that object away. Do not correct it back |
 | `nodes/Shotstack/resources/generation/postGenerate.ts` | the fields `assetType`, `prompt`, `model`, `modelOptions`, `length`, `waitForAsset` and `giveUpAfter`; the asset type values `image`, `video` and `audio`. These build the request body in code, so a rename here changes what a saved workflow sends, not just what it shows |
@@ -148,11 +148,12 @@ The check leaves one thing alone: the node version number. Raising it is how
 you change a frozen name safely, so a check on it would fire on every release.
 See the versioning rule under Rules.
 
-One name is not frozen and still breaks in silence, because two files have to
-agree on it. `nodes/Shotstack/Shotstack.node.ts` exports the list method as
-`getTemplates`, and `nodes/Shotstack/resources/render/postTemplateRender.ts`
-asks for it by that name. Rename one end only and the template picker returns
-nothing, with no error. Change both ends together.
+Two names are not frozen and still break in silence, because two files have to
+agree on each. `nodes/Shotstack/Shotstack.node.ts` exports the list method as
+`getTemplates` and the resource mapper method as `getTemplateFields`, and
+`nodes/Shotstack/resources/render/postTemplateRender.ts` asks for each by that
+name. Rename one end only and the template picker, or the template's merge
+fields, come back empty, with no error. Change both ends together.
 
 One more, and it is the filename rather than the contents:
 `.github/workflows/publish.yml`. npm's trusted publisher entry names that file,
@@ -181,6 +182,12 @@ Break one of these and something fails quietly.
   `typeVersion` on every node, so an existing workflow keeps running the old
   version and a new node gets the new one. Editing a name in place instead
   empties that field in every saved workflow, with no error.
+- **A new default needs a version too.** n8n leaves a value that equals its
+  default out of a saved workflow, so changing a default changes every saved
+  step that relied on the old one. Raise `version` and give the property one
+  copy per version, told apart by `'@version'` in its displayOptions, as
+  `mergeSource` does in `postTemplateRender.ts`. An addition that no saved
+  workflow can be using, such as a new option, may go into version 1 too.
 - **Never use `setTimeout`.** Use `sleep` from `n8n-workflow`. The lint blocks
   `setTimeout` and n8n Cloud verification rejects it.
 - **Never throw from inside a routing expression.** n8n evaluates those in a
