@@ -348,8 +348,8 @@ const UNWALKABLE = [
 /**
  * Every name a rename can reach a user through, read from the built node.
  *
- * Mostly what n8n stores in a saved workflow. Also the list method key, which
- * two files must agree on, so both ends are collected here.
+ * Mostly what n8n stores in a saved workflow. Also the list and resource mapper
+ * method keys, which two files must agree on, so both ends are collected here.
  */
 const frozenNames = () => {
 	const names = new Set();
@@ -366,6 +366,9 @@ const frozenNames = () => {
 				names.add(mode.name);
 				if (mode.typeOptions?.searchListMethod) names.add(mode.typeOptions.searchListMethod);
 			}
+			// A resource mapper names the method that lists its fields, just the same.
+			const mapper = property.typeOptions?.resourceMapper?.resourceMapperMethod;
+			if (mapper) names.add(mapper);
 			for (const step of property.routing?.output?.postReceive ?? []) fromPostReceive(step);
 			for (const option of property.options ?? []) {
 				if (option.value !== undefined) names.add(String(option.value));
@@ -382,6 +385,7 @@ const frozenNames = () => {
 	walk(shotstack.description.properties);
 	names.add(shotstack.description.name);
 	for (const method of Object.keys(shotstack.methods?.listSearch ?? {})) names.add(method);
+	for (const method of Object.keys(shotstack.methods?.resourceMapping ?? {})) names.add(method);
 	// The product token only. Shotstack's render log keeps it, and nothing joins
 	// an old token to a new one. The version after the slash is meant to move.
 	names.add(String(req(resolve(process.cwd(), 'dist/nodes/Shotstack/userAgent.js')).USER_AGENT).split('/')[0]);

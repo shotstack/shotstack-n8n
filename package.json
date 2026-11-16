@@ -37,7 +37,7 @@
     "lint:fix": "npm run gen && n8n-node lint --fix",
     "release": "n8n-node release",
     "prepublishOnly": "n8n-node prerelease",
-    "test": "npm run build && node test/package-loads.mjs && node test/credential-host-scope.mjs && node test/docs-match-ui.mjs && node test/environment-mapping.mjs && node test/wait-and-backoff.mjs && node test/submit-guards.mjs && node test/generation-guards.mjs",
+    "test": "npm run build && node test/package-loads.mjs && node test/credential-host-scope.mjs && node test/docs-match-ui.mjs && node test/environment-mapping.mjs && node test/wait-and-backoff.mjs && node test/submit-guards.mjs && node test/generation-guards.mjs && node test/template-fields.mjs",
     "gen": "node scripts/build-user-agent.mjs"
   },
   "files": [
