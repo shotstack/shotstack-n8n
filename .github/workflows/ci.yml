@@ -29,7 +29,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 'lts/*'
+          # Pinned, not lts/*. n8n-workflow pulls in isolated-vm, which ships
+          # prebuilt binaries for Node 22 and 24 only, so on a newer Node npm ci
+          # has to compile it. Move this when the lockfile's isolated-vm does.
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
