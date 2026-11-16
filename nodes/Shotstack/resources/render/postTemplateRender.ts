@@ -6,10 +6,26 @@ import type {
 	INodeProperties,
 	PreSendAction,
 } from 'n8n-workflow';
+import { templateMerge } from '../../resourceMapping/getTemplateFields';
 
 const showOnly = {
 	resource: ['render'],
 	operation: ['postTemplateRender'],
+};
+
+/**
+ * A value in the JSON type of the template's own value. Shotstack keeps each
+ * value's type, so a sheet's "5" fills a number placeholder as 5, and a number
+ * fills a text placeholder as text.
+ */
+const likeTemplate = (value: unknown, templateValue: unknown): unknown => {
+	if (typeof templateValue === 'number' && typeof value === 'string' && Number.isFinite(Number(value))) {
+		return Number(value);
+	}
+	if (typeof templateValue === 'string' && (typeof value === 'number' || typeof value === 'boolean')) {
+		return String(value);
+	}
+	return value;
 };
 
 /**
@@ -29,7 +45,22 @@ const buildMerge: PreSendAction = async function (
 	const body = (requestOptions.body ?? {}) as IDataObject;
 	let merge: unknown;
 
-	if (source === 'json') {
+	if (source === 'template') {
+		// Built from the template as it is now. Shotstack does not fill gaps, so a
+		// field left empty, or added in Studio after this step was set up, goes out
+		// with the template's own value instead of as a raw placeholder.
+		// skipValidation: n8n would otherwise refuse "9" for a number, or an emptied
+		// field, before likeTemplate gets to convert it.
+		const id = this.getNodeParameter('templateId', '', { extractValue: true }) as string;
+		const given = ((this.getNodeParameter('templateFields.mappingMode', 'defineBelow') === 'autoMapInputData'
+			? this.getInputData().json
+			: this.getNodeParameter('templateFields.value', {}, { skipValidation: true })) ?? {}) as IDataObject;
+		merge = (id ? await templateMerge.call(this, id) : []).map(({ find, replace }) => {
+			const value = given[find];
+			const empty = value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+			return { find, replace: empty ? replace : likeTemplate(value, replace) };
+		});
+	} else if (source === 'json') {
 		const raw = this.getNodeParameter('mergeJson', '') as string | unknown[];
 		if (typeof raw === 'string') {
 			const text = raw.trim();
@@ -97,6 +128,34 @@ const buildMerge: PreSendAction = async function (
 	return requestOptions;
 };
 
+const mergeSourceV1: INodeProperties = {
+	displayName: 'Merge Fields Source',
+	name: 'mergeSource',
+	type: 'options',
+	noDataExpression: true,
+	default: 'fields',
+	displayOptions: { show: { ...showOnly, '@version': [1] } },
+	description:
+		"Whether to fill in the chosen template's own fields, type each placeholder yourself, or hand over a ready-made list. Choose JSON when an earlier step or an AI agent builds the list.",
+	options: [
+		{
+			name: 'From Template',
+			value: 'template',
+			description: "Load the chosen template's merge fields and fill in each one",
+		},
+		{
+			name: 'Fields',
+			value: 'fields',
+			description: 'Type each placeholder and its value',
+		},
+		{
+			name: 'JSON',
+			value: 'json',
+			description: 'Supply the whole list as [{"find":"NAME","replace":"value"}]',
+		},
+	],
+};
+
 export const postTemplateRenderDescription: INodeProperties[] = [
 	{
 		displayName: 'Template',
@@ -144,27 +203,31 @@ export const postTemplateRenderDescription: INodeProperties[] = [
 			},
 		},
 	},
+	mergeSourceV1,
+	// A new default needs a new version: n8n leaves a default value out of a saved workflow,
+	// so changing version 1's default would switch every saved step to the new source.
+	{ ...mergeSourceV1, default: 'template', displayOptions: { show: { ...showOnly, '@version': [2] } } },
 	{
-		displayName: 'Merge Fields Source',
-		name: 'mergeSource',
-		type: 'options',
+		displayName: 'Merge Fields',
+		name: 'templateFields',
+		type: 'resourceMapper',
 		noDataExpression: true,
-		default: 'fields',
-		displayOptions: { show: showOnly },
+		default: { mappingMode: 'defineBelow', value: null },
+		displayOptions: { show: { ...showOnly, mergeSource: ['template'] } },
 		description:
-			'Whether to fill the placeholders one at a time, or hand over a ready-made list. Choose JSON when an earlier step or an AI agent builds the list.',
-		options: [
-			{
-				name: 'Fields',
-				value: 'fields',
-				description: 'Type each placeholder and its value',
+			"The chosen template's merge fields. Leave one empty to keep the template's own value.",
+		typeOptions: {
+			loadOptionsDependsOn: ['templateId.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getTemplateFields',
+				mode: 'add',
+				fieldWords: { singular: 'merge field', plural: 'merge fields' },
+				addAllFields: true,
+				multiKeyMatch: false,
+				supportAutoMap: true,
+				noFieldsError: 'No merge fields yet. Pick a template above, or add placeholders to it in Shotstack Studio.',
 			},
-			{
-				name: 'JSON',
-				value: 'json',
-				description: 'Supply the whole list as [{"find":"NAME","replace":"value"}]',
-			},
-		],
+		},
 	},
 	{
 		displayName: 'Merge Fields (JSON)',

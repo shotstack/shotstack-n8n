@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.0 — 2026-11-16
+
+Render Template can load the chosen template's merge fields.
+
+### Added
+
+- **Merge Fields Source → From Template** on **Render → Render Template**.
+  Picking a template lists its merge fields, one input each, so nobody types
+  placeholder names. A field left empty keeps the template's own value, and so
+  does a field added to the template after the step was set up, so neither
+  renders as a raw placeholder. Each value takes the type of the template's
+  own value, so a "5" from a sheet fills a number placeholder as a number.
+  **Map Automatically** fills the fields from input columns with the same
+  names.
+- Node version 2, where **From Template** is the default, so new Shotstack
+  steps show a template's fields as soon as it is picked. Saved workflows stay
+  on version 1, where **Fields** is still the default, so they are unchanged.
+
 ## 0.2.2 — 2026-10-30
 
 Fixes the Shotstack credential in n8n's HTTP Request node. With the credential
